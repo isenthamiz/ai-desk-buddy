@@ -7,6 +7,7 @@ from enum import StrEnum
 
 from aideskbuddy_simulator.config import BlinkConfig
 from aideskbuddy_simulator.face.animation import AnimatedValue
+from aideskbuddy_simulator.face.pose import FacePose, MouthShape
 
 
 class Expression(StrEnum):
@@ -74,6 +75,55 @@ class FaceController:
         return self._look_direction
 
     @property
+    def pose(self) -> FacePose:
+        """Return coordinated eye and mouth geometry for the current frame."""
+        speaking_phase = (math.sin(self._animation_elapsed * 10.0) + 1.0) / 2.0
+        poses = {
+            Expression.NORMAL: FacePose(mouth_shape=MouthShape.NEUTRAL),
+            Expression.HAPPY: FacePose(
+                eye_width_scale=1.04,
+                eye_tilt_degrees=9.0,
+                mouth_shape=MouthShape.SMILE,
+                mouth_width_scale=1.2,
+            ),
+            Expression.LISTENING: FacePose(
+                eye_width_scale=1.05,
+                eye_height_scale=1.08,
+                mouth_shape=MouthShape.NEUTRAL,
+            ),
+            Expression.THINKING: FacePose(
+                eye_height_scale=0.94,
+                eye_tilt_degrees=-3.0,
+                mouth_shape=MouthShape.THINKING,
+            ),
+            Expression.SPEAKING: FacePose(
+                eye_height_scale=0.96,
+                mouth_shape=MouthShape.OPEN,
+                mouth_openness=0.3 + 0.7 * speaking_phase,
+                face_y_offset=1.5 * math.sin(self._animation_elapsed * 8.0),
+            ),
+            Expression.TIMER: FacePose(
+                mouth_shape=MouthShape.NEUTRAL,
+            ),
+            Expression.SURPRISED: FacePose(
+                eye_width_scale=1.12,
+                eye_height_scale=1.1,
+                mouth_shape=MouthShape.SURPRISED,
+                mouth_openness=1.0,
+            ),
+            Expression.SLEEPING: FacePose(
+                mouth_shape=MouthShape.SLEEPING,
+                mouth_width_scale=0.85,
+            ),
+            Expression.ERROR: FacePose(
+                eye_width_scale=1.02,
+                eye_tilt_degrees=-11.0,
+                mouth_shape=MouthShape.ERROR,
+            ),
+        }
+        return poses[self._expression]
+
+    @property
     def is_blinking(self) -> bool:
         return self._blink_elapsed is not None
 
@@ -112,7 +162,7 @@ class FaceController:
 
     @property
     def eye_scale(self) -> float:
-        return 1.12 if self._expression is Expression.SURPRISED else 1.0
+        return self.pose.eye_width_scale
 
     @property
     def gaze_offset(self) -> tuple[float, float]:

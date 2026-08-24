@@ -10,6 +10,9 @@ from aideskbuddy.protocol.models import (
     ServerMessage,
     Speak,
     StateChanged,
+    TimerCancelled,
+    TimerCompleted,
+    TimerStarted,
     UserText,
 )
 from aideskbuddy.protocol.parser import ProtocolMessageError, parse_device_message
@@ -25,6 +28,9 @@ __all__ = [
     "ServerMessage",
     "Speak",
     "StateChanged",
+    "TimerCancelled",
+    "TimerCompleted",
+    "TimerStarted",
     "UserText",
     "parse_device_message",
 ]

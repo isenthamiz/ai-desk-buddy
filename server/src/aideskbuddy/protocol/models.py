@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StrictBool
 
 
 class ProtocolMessage(BaseModel):
@@ -62,5 +62,20 @@ class Speak(ProtocolMessage):
     text: str
 
 
+class TimerStarted(ProtocolMessage):
+    type: Literal["TIMER_STARTED"] = "TIMER_STARTED"
+    duration_seconds: PositiveInt = Field(alias="durationSeconds")
+
+
+class TimerCancelled(ProtocolMessage):
+    type: Literal["TIMER_CANCELLED"] = "TIMER_CANCELLED"
+
+
+class TimerCompleted(ProtocolMessage):
+    type: Literal["TIMER_COMPLETED"] = "TIMER_COMPLETED"
+
+
 DeviceMessage = DeviceConnected | UserText | ButtonPressed | PresenceChanged
-ServerMessage = StateChanged | DisplayText | Speak
+ServerMessage = (
+    StateChanged | DisplayText | Speak | TimerStarted | TimerCancelled | TimerCompleted
+)

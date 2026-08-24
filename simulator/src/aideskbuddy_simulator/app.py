@@ -140,7 +140,14 @@ def run(
                                 pygame.key.stop_text_input()
                     elif event.key == pygame.K_ESCAPE:
                         running = False
-                    elif event.key == pygame.K_F1 or event.unicode == "?":
+                    elif (
+                        event.key == pygame.K_F1
+                        or event.unicode == "?"
+                        or (
+                            event.key == pygame.K_SLASH
+                            and event.mod & pygame.KMOD_SHIFT
+                        )
+                    ):
                         show_help = not show_help
                     elif event.key in {pygame.K_n, pygame.K_t}:
                         input_mode = "NOTIFY" if event.key == pygame.K_n else "TALK"

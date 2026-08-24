@@ -1,7 +1,7 @@
 # Device ↔ Backend Protocol
 
 ## Status
-**Draft v0.1**
+**Draft v0.2**
 
 This protocol is intentionally small. Milestone 1 only needs enough messages to prove simulator ↔ FastAPI communication. Later milestones can extend it.
 
@@ -54,6 +54,12 @@ Temporary/diagnostic text input used by the simulator before voice is implemente
   "text": "Hello"
 }
 ```
+
+For AI conversation, the server responds with the existing message types in this
+order: `STATE_CHANGED(THINKING)`, `STATE_CHANGED(SPEAKING)`, `DISPLAY_TEXT`,
+`SPEAK`, then `STATE_CHANGED(IDLE)`. Provider failures use
+`STATE_CHANGED(ERROR)`, a short `DISPLAY_TEXT`/`SPEAK` apology, then return to
+`STATE_CHANGED(IDLE)`.
 
 ### BUTTON_PRESSED
 
@@ -120,6 +126,42 @@ Represents text that should eventually be spoken. Before audio exists, the simul
 }
 ```
 
+### TIMER_STARTED
+Starts or replaces the device's presentation of the backend-owned countdown.
+Milestone 3 supports one active timer per connected device; a second timer request
+fails until the active timer is cancelled or completes.
+
+```json
+{
+  "type": "TIMER_STARTED",
+  "durationSeconds": 300
+}
+```
+
+The server follows this with `STATE_CHANGED(TIMER)`. The device may render the
+countdown locally, but the backend remains authoritative for cancellation and expiry.
+
+### TIMER_CANCELLED
+
+```json
+{
+  "type": "TIMER_CANCELLED"
+}
+```
+
+The server follows this with `STATE_CHANGED(IDLE)`.
+
+### TIMER_COMPLETED
+
+```json
+{
+  "type": "TIMER_COMPLETED"
+}
+```
+
+On expiry the server sends `TIMER_COMPLETED`, `STATE_CHANGED(ALERT)`, a short
+`DISPLAY_TEXT` and `SPEAK` alert, then `STATE_CHANGED(IDLE)`.
+
 ## Validation
 On the Python backend:
 - use Pydantic models for message validation
@@ -130,7 +172,7 @@ On the Python backend:
 ## Future messages
 Do not implement these merely because they are listed here. They are likely future additions:
 - audio stream/start/stop messages
-- timer started/updated/completed
+- timer countdown updates (only if later needed)
 - animation commands
 - volume changes
 - device configuration

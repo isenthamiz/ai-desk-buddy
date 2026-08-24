@@ -4,12 +4,14 @@ This package is the desktop representation of the future Desk Buddy display.
 The simulator currently contains:
 
 - a configurable virtual display
+- a 240×240 circular display matching the target hardware
 - two rendered eyes
 - eight manually selectable Desk Buddy states
 - state-specific expressions and lightweight animations
 - calm, randomly timed blinking and subtle idle movement
 
-It intentionally has no networking, hardware, buzzer, or audio support.
+It intentionally has no hardware, buzzer, or audio support. Its WebSocket client
+uses the same public device protocol intended for the ESP32.
 
 ## Run locally
 
@@ -23,7 +25,7 @@ uv run buddy-simulator
 
 Press Escape or close the window to exit.
 
-Press `?` or F1 to show or hide the in-screen command helper.
+Press `?` or F1 to show or hide the command helper.
 
 By default, the simulator connects to:
 
@@ -85,6 +87,10 @@ uv run buddy-simulator \
 
 ## Timer controls
 
+When connected, press `T` and ask Buddy to set or cancel a timer. These AI tool
+actions are owned by the backend and reflected through timer protocol messages.
+The controls below remain available for offline display testing.
+
 The timer starts at 60 seconds by default. While it is inactive:
 
 - Up Arrow adds 10 seconds.
@@ -129,6 +135,11 @@ uv run buddy-simulator --notification-duration 5
 
 The reusable face controller supports expressions, blinking, and smoothly
 interpolated gaze targets. Use these developer keys while the simulator runs:
+
+Each expression produces a coordinated `FacePose` containing pixel-phosphor
+eye geometry, eye tilt, mouth shape, mouth openness, and subtle face movement.
+The renderer consumes the pose without putting animation behavior into the
+application or state machine.
 
 | Key | Face action |
 | --- | --- |

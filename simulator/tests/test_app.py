@@ -4,12 +4,16 @@ import pytest
 
 import pygame
 
-from aideskbuddy_simulator.app import KEY_STATE_MAP, handle_key, run
+from aideskbuddy_simulator.app import (
+    KEY_STATE_MAP,
+    handle_key,
+    run,
+)
 from aideskbuddy_simulator.config import DisplayConfig
 from aideskbuddy_simulator.controller import EXPRESSION_FOR_STATE, SimulatorController
 from aideskbuddy_simulator.core.state import DeskBuddyState
 from aideskbuddy_simulator.face.controller import Expression, LookDirection
-from aideskbuddy_simulator.renderer import FaceRenderer
+from aideskbuddy_simulator.renderer import FaceRenderer, OUTSIDE_COLOR
 
 
 @pytest.mark.parametrize("state", list(DeskBuddyState))
@@ -54,5 +58,23 @@ def test_command_help_overlay_renders(monkeypatch) -> None:
             controller.state,
             show_help=True,
         )
+    finally:
+        pygame.quit()
+
+
+def test_virtual_display_matches_round_240_pixel_hardware(monkeypatch) -> None:
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    pygame.init()
+    try:
+        config = DisplayConfig()
+        assert (config.virtual_width, config.virtual_height) == (240, 240)
+        assert config.window_size == (480, 480)
+        surface = pygame.Surface((config.virtual_width, config.virtual_height))
+        controller = SimulatorController()
+
+        FaceRenderer(config).render(surface, controller.face, controller.state)
+
+        assert surface.get_at((0, 0)) == OUTSIDE_COLOR
+        assert surface.get_at((120, 120)) != OUTSIDE_COLOR
     finally:
         pygame.quit()

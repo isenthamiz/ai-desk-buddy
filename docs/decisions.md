@@ -55,3 +55,28 @@ The daily-information concept is framed as a lightweight **Desk Dashboard**, rat
 **Decision:** Prefer async APIs for WebSockets and network integrations.
 
 **Reason:** The backend is expected to maintain long-lived connections and perform network-heavy AI/speech/integration calls.
+
+## ADR-011 — Initial AI conversation integration
+**Decision:** Put AI generation behind a provider-neutral async interface and use
+OpenAI's Responses API for the first provider. Keep a bounded conversation history
+in backend memory for each device connection.
+
+Use `gpt-5.6-luna` as the default text model, configurable through `OPENAI_MODEL`,
+and read credentials only from `OPENAI_API_KEY`.
+
+**Reason:** The abstraction keeps conversation orchestration testable and separates
+vendor SDK details. Local bounded history is sufficient for Milestone 2 and avoids
+premature persistence. The default model fits short, cost- and latency-sensitive
+desk-companion conversations while remaining easy to override.
+
+## ADR-012 — Milestone 3 timer scope
+**Decision:** Support one backend-owned, in-memory timer per connected device. AI
+function calls invoke deterministic `set_timer` and `cancel_timer` tools. The device
+renders the countdown from protocol events, while backend expiry is authoritative.
+
+Timer state is intentionally not restored after a disconnect or server restart.
+Persistence remains deferred until Milestone 4.
+
+**Reason:** A single timer proves the tool and lifecycle architecture with minimal
+state coordination. Multiple/named timers, pausing, and full focus sessions can be
+added when product behavior requires them.

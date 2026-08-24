@@ -40,6 +40,7 @@ class SimulatorController:
         self.buddy_text: str | None = None
         self._buddy_text_remaining = 0.0
         self._speaking_return_state: DeskBuddyState | None = None
+        self._timer_server_managed = False
         self.face.set_expression(EXPRESSION_FOR_STATE[initial_state])
 
     @property
@@ -95,6 +96,28 @@ class SimulatorController:
             if self.state is not DeskBuddyState.SPEAKING:
                 self._speaking_return_state = self.state
             self._apply_state(DeskBuddyState.SPEAKING)
+        elif message_type == "TIMER_STARTED":
+            duration = message.get("durationSeconds")
+            if isinstance(duration, int) and duration > 0:
+                if self.timer.is_active:
+                    self.timer.cancel()
+                self.timer.set_duration(float(duration))
+                self.timer.start()
+                self._timer_server_managed = True
+                self.notification.dismiss()
+                self._apply_state(DeskBuddyState.TIMER)
+        elif message_type == "TIMER_CANCELLED":
+            self.timer.cancel()
+            self._timer_server_managed = False
+            self.notification.dismiss()
+            self._apply_state(DeskBuddyState.IDLE)
+        elif message_type == "TIMER_COMPLETED":
+            self.timer.cancel()
+            self._timer_server_managed = False
+            self.show_notification(
+                "Timer complete!",
+                return_state=DeskBuddyState.IDLE,
+            )
 
     def select_state(self, state: DeskBuddyState) -> None:
         """Manually select a state for expression testing."""
@@ -116,6 +139,7 @@ class SimulatorController:
         if not self.timer.start():
             return False
         self.notification.dismiss()
+        self._timer_server_managed = False
         self._apply_state(DeskBuddyState.TIMER)
         return True
 
@@ -128,6 +152,7 @@ class SimulatorController:
     def cancel_timer(self) -> bool:
         was_active = self.timer.cancel()
         self.notification.dismiss()
+        self._timer_server_managed = False
         self._apply_state(DeskBuddyState.IDLE)
         return was_active
 
@@ -156,7 +181,8 @@ class SimulatorController:
 
     def update(self, delta_seconds: float) -> None:
         self.face.update(delta_seconds)
-        if self.timer.update(delta_seconds):
+        completed = self.timer.update(delta_seconds)
+        if completed and not self._timer_server_managed:
             self._show_timer_completion()
             return
 

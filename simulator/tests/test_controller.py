@@ -105,3 +105,33 @@ def test_server_speak_command_temporarily_drives_speaking_reaction() -> None:
     controller.update(3)
     assert controller.state is DeskBuddyState.IDLE
     assert controller.buddy_text is None
+
+
+def test_server_controls_timer_lifecycle() -> None:
+    controller = SimulatorController(timer_duration_seconds=60)
+
+    controller.handle_server_message(
+        {"type": "TIMER_STARTED", "durationSeconds": 30}
+    )
+    assert controller.state is DeskBuddyState.TIMER
+    assert controller.timer.status is TimerStatus.RUNNING
+    assert controller.timer_text == "00:30"
+
+    controller.update(30)
+    assert controller.state is DeskBuddyState.TIMER
+
+    controller.handle_server_message({"type": "TIMER_COMPLETED"})
+    assert controller.state is DeskBuddyState.NOTIFICATION
+    assert controller.notification_text == "Timer complete!"
+
+
+def test_server_can_cancel_timer() -> None:
+    controller = SimulatorController()
+    controller.handle_server_message(
+        {"type": "TIMER_STARTED", "durationSeconds": 30}
+    )
+
+    controller.handle_server_message({"type": "TIMER_CANCELLED"})
+
+    assert controller.state is DeskBuddyState.IDLE
+    assert controller.timer.status is TimerStatus.READY

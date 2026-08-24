@@ -65,6 +65,12 @@ Planned work:
 - completion alert
 - focus-mode foundations
 
+Initial scope decisions:
+- one active, in-memory timer per connected device
+- backend-authoritative expiry with device-side countdown rendering
+- AI function calls execute deterministic timer tools
+- no pause/resume, named timers, persistence, or full Pomodoro workflow yet
+
 ## Milestone 4 — Reminders & Durable State
 
 ### Goal

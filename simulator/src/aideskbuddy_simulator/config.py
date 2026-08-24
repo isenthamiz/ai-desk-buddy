@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class DisplayConfig:
     """Dimensions for the virtual device display and desktop window."""
 
-    virtual_width: int = 320
+    virtual_width: int = 240
     virtual_height: int = 240
     window_scale: int = 2
     frames_per_second: int = 60

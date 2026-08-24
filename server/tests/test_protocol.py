@@ -8,6 +8,7 @@ from aideskbuddy.protocol import (
     PresenceChanged,
     ProtocolMessageError,
     UserText,
+    TimerStarted,
     parse_device_message,
 )
 
@@ -51,3 +52,12 @@ def test_request_id_and_additive_fields_are_supported() -> None:
     )
 
     assert message.request_id == "abc"
+
+
+def test_timer_started_serializes_camel_case_duration() -> None:
+    message = TimerStarted(durationSeconds=90)
+
+    assert message.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "type": "TIMER_STARTED",
+        "durationSeconds": 90,
+    }

@@ -3,7 +3,7 @@
 AI Desk Buddy is a physical AI desk companion built around an ESP32-S3 and a Python/FastAPI backend.
 
 ## Status
-Planning / Milestone 1.
+Milestone 3 implemented.
 
 ## Planned repository structure
 
@@ -35,9 +35,12 @@ For Codex and contributors:
 6. Record important architectural changes in `docs/decisions.md`.
 
 ## Current milestone
-**Milestone 1 — Buddy Is Alive**
+**Milestone 3 — Buddy Has Tools**
 
-The first goal is to build a FastAPI backend and Python CLI simulator that communicate over WebSocket without requiring physical hardware.
+The backend and simulator communicate over WebSocket. Text entered in the simulator
+goes through an OpenAI-backed conversation service with in-memory context. Buddy can
+use deterministic tools to set or cancel one in-memory timer per connected device;
+the backend owns timer expiry and the simulator renders its countdown and alert.
 
 ## Initial backend shape
 
@@ -65,8 +68,16 @@ uv sync
 Run the server from the `server/` directory:
 
 ```bash
+cp .env.example .env
+# Edit .env and replace the placeholder API key.
 uv run uvicorn aideskbuddy.main:app --reload
 ```
+
+The server loads `server/.env` automatically. It is ignored by Git; never commit
+or share it. The default model is `gpt-5.6-luna`; override `OPENAI_MODEL` in the
+same file if desired. The server can start without a key for health checks, but
+conversational requests return a graceful configuration error response until the
+key is set.
 
 The health endpoint is available at `http://127.0.0.1:8000/health`.
 
@@ -98,3 +109,4 @@ cd simulator
 The simulator connects to `ws://127.0.0.1:8000/ws/device`, identifies itself as
 `simulator-001`, and displays a green `CONNECTED` indicator. Use `F` for an
 action-button event, `P` for presence, and `T` for temporary text input.
+Ask Buddy to set or cancel a timer through the `T` text input.
