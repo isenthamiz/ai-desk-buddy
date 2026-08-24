@@ -3,7 +3,7 @@
 AI Desk Buddy is a physical AI desk companion built around an ESP32-S3 and a Python/FastAPI backend.
 
 ## Status
-Milestone 3 implemented.
+Milestone 4 implemented.
 
 ## Planned repository structure
 
@@ -35,12 +35,12 @@ For Codex and contributors:
 6. Record important architectural changes in `docs/decisions.md`.
 
 ## Current milestone
-**Milestone 3 — Buddy Has Tools**
+**Milestone 4 — Reminders & Durable State**
 
 The backend and simulator communicate over WebSocket. Text entered in the simulator
-goes through an OpenAI-backed conversation service with in-memory context. Buddy can
-use deterministic tools to set or cancel one in-memory timer per connected device;
-the backend owns timer expiry and the simulator renders its countdown and alert.
+goes through an OpenAI-backed conversation service with deterministic timer and
+reminder tools. One-shot reminders are stored in SQLite, survive backend restarts,
+and are delivered when an offline device reconnects.
 
 ## Initial backend shape
 
@@ -80,6 +80,9 @@ conversational requests return a graceful configuration error response until the
 key is set.
 
 The health endpoint is available at `http://127.0.0.1:8000/health`.
+
+Reminder data defaults to `server/data/buddy.db`. Set `BUDDY_DATABASE_PATH` to use
+a different SQLite file. Reminder due times are stored in UTC.
 
 Run the tests from the `server/` directory:
 

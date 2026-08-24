@@ -27,6 +27,7 @@ from aideskbuddy.protocol import (
 )
 from aideskbuddy.timer import TimerService
 from aideskbuddy.tools import ToolRegistry
+from aideskbuddy.reminder import ReminderService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ async def handle_device_websocket(
     websocket: WebSocket,
     sessions: SessionRegistry,
     ai_provider: AIProvider,
+    reminders: ReminderService,
 ) -> None:
     """Handle one authenticated-by-handshake device connection."""
     await websocket.accept()
@@ -72,13 +74,15 @@ async def handle_device_websocket(
             device_id=first_message.device_id,
             device_type=first_message.device_type,
             websocket=websocket,
+            send=send,
         )
         sessions.connect(session)
         LOGGER.info("Device connected: %s", session.device_id)
         await send(initial_messages(first_message))
         timer = TimerService(timer_completed)
-        tools = ToolRegistry(timer)
+        tools = ToolRegistry(timer, reminders, session.device_id)
         conversation = ConversationService(ai_provider, tools, send)
+        await reminders.deliver_due(session.device_id)
 
         while True:
             payload = await websocket.receive_text()

@@ -7,6 +7,8 @@ from pydantic import ValidationError
 
 from aideskbuddy.protocol.models import (
     ButtonPressed,
+    CancelReminder,
+    CreateReminder,
     DeviceConnected,
     DeviceMessage,
     PresenceChanged,
@@ -18,6 +20,8 @@ DEVICE_MESSAGE_MODELS = {
     "USER_TEXT": UserText,
     "BUTTON_PRESSED": ButtonPressed,
     "PRESENCE_CHANGED": PresenceChanged,
+    "CREATE_REMINDER": CreateReminder,
+    "CANCEL_REMINDER": CancelReminder,
 }
 
 

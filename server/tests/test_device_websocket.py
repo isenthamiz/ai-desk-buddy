@@ -1,5 +1,7 @@
 """WebSocket device boundary integration tests."""
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -51,7 +53,13 @@ class TimerAIProvider:
         execute_tool: ToolExecutor | None = None,
     ) -> str:
         del messages
-        assert {tool.name for tool in tools} == {"set_timer", "cancel_timer"}
+        assert {tool.name for tool in tools} == {
+            "set_timer",
+            "cancel_timer",
+            "create_reminder",
+            "create_relative_reminder",
+            "cancel_reminder",
+        }
         assert execute_tool is not None
         await execute_tool("set_timer", {"duration_seconds": 1})
         return "Timer set for one second."
@@ -215,6 +223,38 @@ def test_ai_tool_starts_timer_and_backend_reports_completion() -> None:
 
             assert websocket.receive_json()["type"] == "TIMER_COMPLETED"
             assert websocket.receive_json()["state"] == "ALERT"
+            assert websocket.receive_json()["type"] == "DISPLAY_TEXT"
+            assert websocket.receive_json()["type"] == "SPEAK"
+            assert websocket.receive_json()["state"] == "IDLE"
+
+
+def test_overdue_reminder_is_delivered_when_device_reconnects(tmp_path) -> None:
+    app = create_app(
+        ai_provider=FakeAIProvider(),
+        database_path=tmp_path / "buddy.db",
+        reminder_poll_interval=60,
+    )
+    reminder = app.state.reminders.create(
+        "simulator-001",
+        "Join the design review",
+        datetime.now(UTC) - timedelta(seconds=1),
+    )
+
+    with TestClient(app) as client:
+        with client.websocket_connect("/ws/device") as websocket:
+            websocket.send_json(
+                {
+                    "type": "DEVICE_CONNECTED",
+                    "deviceId": "simulator-001",
+                    "deviceType": "SIMULATOR",
+                }
+            )
+            assert websocket.receive_json()["state"] == "IDLE"
+            assert websocket.receive_json()["state"] == "ALERT"
+            due = websocket.receive_json()
+            assert due["type"] == "REMINDER_DUE"
+            assert due["reminderId"] == reminder.id
+            assert due["text"] == "Join the design review"
             assert websocket.receive_json()["type"] == "DISPLAY_TEXT"
             assert websocket.receive_json()["type"] == "SPEAK"
             assert websocket.receive_json()["state"] == "IDLE"

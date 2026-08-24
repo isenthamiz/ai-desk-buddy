@@ -118,6 +118,11 @@ class SimulatorController:
                 "Timer complete!",
                 return_state=DeskBuddyState.IDLE,
             )
+        elif message_type == "REMINDER_DUE" and isinstance(message.get("text"), str):
+            return_state = (
+                DeskBuddyState.TIMER if self.timer.is_active else DeskBuddyState.IDLE
+            )
+            self.show_notification(str(message["text"]), return_state=return_state)
 
     def select_state(self, state: DeskBuddyState) -> None:
         """Manually select a state for expression testing."""

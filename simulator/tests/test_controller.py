@@ -85,6 +85,22 @@ def test_notification_during_timer_restores_active_timer() -> None:
     assert controller.timer_text == "00:07"
 
 
+def test_reminder_due_shows_notification() -> None:
+    controller = SimulatorController()
+
+    controller.handle_server_message(
+        {
+            "type": "REMINDER_DUE",
+            "reminderId": "rem-1",
+            "text": "Join the design review",
+            "dueAt": "2026-08-24T14:00:00Z",
+        }
+    )
+
+    assert controller.state is DeskBuddyState.NOTIFICATION
+    assert controller.notification_text == "Join the design review"
+
+
 def test_server_state_command_changes_face_state() -> None:
     controller = SimulatorController()
 

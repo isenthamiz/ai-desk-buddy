@@ -1,8 +1,13 @@
 """In-memory connected-device sessions for Milestone 1."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from fastapi import WebSocket
+
+from aideskbuddy.protocol import ServerMessage
+
+MessageSender = Callable[[list[ServerMessage]], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +15,7 @@ class DeviceSession:
     device_id: str
     device_type: str
     websocket: WebSocket
+    send: MessageSender
 
 
 class SessionRegistry:

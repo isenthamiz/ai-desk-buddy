@@ -81,6 +81,11 @@ Button names are intentionally not fully defined until hardware/control behavior
 }
 ```
 
+Reminder creation and cancellation are deterministic AI tools in Milestone 4; they
+do not add device-to-server protocol messages. Relative requests such as "in one
+minute" use a duration in seconds so the backend calculates the due time from its
+authoritative clock; absolute requests use a timezone-aware timestamp.
+
 ## Server → Device messages
 
 ### STATE_CHANGED
@@ -161,6 +166,41 @@ The server follows this with `STATE_CHANGED(IDLE)`.
 
 On expiry the server sends `TIMER_COMPLETED`, `STATE_CHANGED(ALERT)`, a short
 `DISPLAY_TEXT` and `SPEAK` alert, then `STATE_CHANGED(IDLE)`.
+
+### REMINDER_CREATED
+Confirms that a durable one-shot reminder was stored. `dueAt` is normalized to UTC.
+
+```json
+{
+  "type": "REMINDER_CREATED",
+  "reminderId": "7d63176a-40cc-4f45-a591-b5c072866a21",
+  "text": "Join the design review",
+  "dueAt": "2026-08-24T14:00:00Z"
+}
+```
+
+### REMINDER_CANCELLED
+
+```json
+{
+  "type": "REMINDER_CANCELLED",
+  "reminderId": "7d63176a-40cc-4f45-a591-b5c072866a21"
+}
+```
+
+### REMINDER_DUE
+The server sends `STATE_CHANGED(ALERT)`, `REMINDER_DUE`, `DISPLAY_TEXT`, `SPEAK`,
+then `STATE_CHANGED(IDLE)`. If the owning device is offline, the reminder remains
+pending and is delivered when that device reconnects.
+
+```json
+{
+  "type": "REMINDER_DUE",
+  "reminderId": "7d63176a-40cc-4f45-a591-b5c072866a21",
+  "text": "Join the design review",
+  "dueAt": "2026-08-24T14:00:00Z"
+}
+```
 
 ## Validation
 On the Python backend:

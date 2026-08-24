@@ -1,9 +1,10 @@
 """Pydantic models for protocol v0.1."""
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StrictBool, field_validator
 
 
 class ProtocolMessage(BaseModel):
@@ -47,6 +48,24 @@ class PresenceChanged(ProtocolMessage):
     present: StrictBool
 
 
+class CreateReminder(ProtocolMessage):
+    type: Literal["CREATE_REMINDER"] = "CREATE_REMINDER"
+    text: str = Field(min_length=1, max_length=500)
+    due_at: datetime = Field(alias="dueAt")
+
+    @field_validator("due_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("dueAt must include a UTC offset")
+        return value
+
+
+class CancelReminder(ProtocolMessage):
+    type: Literal["CANCEL_REMINDER"] = "CANCEL_REMINDER"
+    reminder_id: str = Field(alias="reminderId", min_length=1)
+
+
 class StateChanged(ProtocolMessage):
     type: Literal["STATE_CHANGED"] = "STATE_CHANGED"
     state: BuddyState
@@ -75,7 +94,29 @@ class TimerCompleted(ProtocolMessage):
     type: Literal["TIMER_COMPLETED"] = "TIMER_COMPLETED"
 
 
-DeviceMessage = DeviceConnected | UserText | ButtonPressed | PresenceChanged
+class ReminderCreated(ProtocolMessage):
+    type: Literal["REMINDER_CREATED"] = "REMINDER_CREATED"
+    reminder_id: str = Field(alias="reminderId")
+    text: str
+    due_at: datetime = Field(alias="dueAt")
+
+
+class ReminderCancelled(ProtocolMessage):
+    type: Literal["REMINDER_CANCELLED"] = "REMINDER_CANCELLED"
+    reminder_id: str = Field(alias="reminderId")
+
+
+class ReminderDue(ProtocolMessage):
+    type: Literal["REMINDER_DUE"] = "REMINDER_DUE"
+    reminder_id: str = Field(alias="reminderId")
+    text: str
+    due_at: datetime = Field(alias="dueAt")
+
+
+DeviceMessage = (
+    DeviceConnected | UserText | ButtonPressed | PresenceChanged | CreateReminder | CancelReminder
+)
 ServerMessage = (
     StateChanged | DisplayText | Speak | TimerStarted | TimerCancelled | TimerCompleted
+    | ReminderCreated | ReminderCancelled | ReminderDue
 )

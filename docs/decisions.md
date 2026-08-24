@@ -80,3 +80,11 @@ Persistence remains deferred until Milestone 4.
 **Reason:** A single timer proves the tool and lifecycle architecture with minimal
 state coordination. Multiple/named timers, pausing, and full focus sessions can be
 added when product behavior requires them.
+
+## ADR-013 — Milestone 4 durable storage
+**Decision:** Use SQLite through Python's standard library for one-shot reminders.
+Store timezone-aware due times in UTC, keep pending reminders durable while a device
+is offline, and mark them delivered only after their notification is sent.
+
+**Reason:** A single local backend does not require an ORM, database server, or
+message broker. A repository boundary keeps future storage changes possible.

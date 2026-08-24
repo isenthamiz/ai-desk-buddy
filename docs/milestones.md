@@ -83,6 +83,16 @@ Planned work:
 - reminder notifications
 - define persistence choice based on actual requirements
 
+### Implemented scope
+- one-shot reminders created/cancelled through deterministic AI tools
+- SQLite persistence with UTC due times
+- pending reminder restoration after backend restart
+- offline-device deferral and delivery on reconnect
+- alert/display/speak notification flow in the simulator
+
+Recurring reminders, snoozing, reminder-management UI, and calendar integration are
+deferred.
+
 ## Milestone 5 — First Real ESP32
 
 ### Goal

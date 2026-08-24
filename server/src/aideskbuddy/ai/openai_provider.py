@@ -3,6 +3,7 @@
 import json
 import logging
 from collections.abc import Sequence
+from datetime import datetime
 
 import openai
 from openai import AsyncOpenAI
@@ -19,9 +20,13 @@ LOGGER = logging.getLogger(__name__)
 BUDDY_INSTRUCTIONS = """You are Buddy, a friendly physical companion on the user's desk.
 Answer conversationally and helpfully. Keep replies concise—normally one or two short
 sentences—because they will be spoken aloud. Do not claim to have performed actions or
-used tools unless a tool result confirms success. Use the available timer tools whenever
-the user asks to start or cancel a timer. If a request needs an unavailable physical or
-external action, say briefly that you cannot do that yet."""
+used tools unless a tool result confirms success. Use the available timer and reminder
+tools whenever the user asks to start/cancel a timer or create/cancel a reminder. Pass
+For relative reminder requests such as "in one minute", always use
+create_relative_reminder and convert the requested delay to seconds; never calculate an
+absolute date yourself. Use create_reminder only when the user gives an absolute date or
+clock time, passing a timezone-aware ISO 8601 timestamp. If a request needs an unavailable
+physical or external action, say briefly that you cannot do that yet."""
 
 
 class OpenAIProvider:
@@ -61,7 +66,10 @@ class OpenAIProvider:
             for _ in range(4):
                 response = await self._client.responses.create(
                     model=self._model,
-                    instructions=BUDDY_INSTRUCTIONS,
+                    instructions=(
+                        f"{BUDDY_INSTRUCTIONS}\nThe backend's current local date and time "
+                        f"is {datetime.now().astimezone().isoformat()}."
+                    ),
                     input=input_items,
                     tools=response_tools,
                     max_output_tokens=200,
