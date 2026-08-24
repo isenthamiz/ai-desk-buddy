@@ -1,0 +1,187 @@
+# AI Desk Buddy Architecture
+
+## Goal
+Build a small physical desk companion that can interact through a display, voice, touch/controls, presence sensing, sounds, timers, reminders, AI tools, and developer-oriented features.
+
+The design intentionally separates the physical device from the higher-level intelligence.
+
+## High-level architecture
+
+```text
+┌──────────────────────┐
+│      ESP32-S3        │
+│                      │
+│ Display / animations │
+│ Microphone           │
+│ Speaker              │
+│ Buttons / controls   │
+│ Touch                │
+│ Presence             │
+│ Wi-Fi                │
+└──────────┬───────────┘
+           │
+           │ WebSocket
+           ▼
+┌──────────────────────┐
+│   FastAPI Backend    │
+│                      │
+│ Device management    │
+│ Conversation         │
+│ AI orchestration     │
+│ Timers               │
+│ Reminders            │
+│ Tools                │
+│ Audio services       │
+│ Integrations         │
+└──────────┬───────────┘
+           │
+           ▼
+   External services/APIs
+```
+
+## Responsibility split
+
+### ESP32-S3
+The ESP32 is the physical interface.
+
+It should handle:
+- display rendering and animations
+- microphone capture
+- speaker/audio playback
+- physical buttons/controls
+- touch input
+- presence sensor input
+- Wi-Fi connectivity
+- local device status
+- sending device/user events
+- receiving commands/state updates
+
+It should not own general AI orchestration, conversation history, reminders, calendar integrations, or other backend business logic.
+
+### Backend
+The backend is the main application brain.
+
+It should handle:
+- connected-device sessions
+- buddy state/orchestration
+- AI conversations
+- AI tool execution
+- timers and focus sessions
+- reminders
+- speech processing orchestration
+- external integrations
+- configuration that is not inherently hardware-local
+- persistence when required
+
+## Backend technology
+- Python 3.13+
+- FastAPI
+- Pydantic
+- Uvicorn
+- `uv`
+- `pytest`
+
+Suggested package layout:
+
+```text
+server/
+├── pyproject.toml
+└── src/
+    └── aideskbuddy/
+        ├── main.py
+        ├── ai/
+        ├── audio/
+        ├── config/
+        ├── conversation/
+        ├── device/
+        ├── protocol/
+        ├── reminder/
+        ├── timer/
+        └── tools/
+```
+
+This is guidance, not a requirement to create empty packages before they are needed.
+
+## Communication
+WebSocket is the primary device/backend channel because the connection is bidirectional and long-lived.
+
+REST can be added for operations that naturally fit request/response semantics, such as health/configuration endpoints.
+
+See `protocol.md`.
+
+## Device simulator
+Hardware availability must not block backend development.
+
+A simulator should behave like a device client and use the same public protocol as the ESP32. It should be able to:
+- connect/disconnect
+- send representative device events
+- send text input for early AI testing
+- print server state/commands
+- simulate presence and physical controls
+
+The simulator can be a small Python CLI using the same protocol definitions or JSON schema as the server where practical.
+
+## Buddy state model
+Initial conceptual states:
+
+```text
+SLEEPING
+IDLE
+LISTENING
+THINKING
+SPEAKING
+TIMER
+ALERT
+OFFLINE
+ERROR
+```
+
+The exact transition model should evolve incrementally. Avoid building a complex state-machine framework until behavior requires it.
+
+Typical conversational flow:
+
+```text
+SLEEPING --presence--> IDLE
+IDLE --talk/input--> LISTENING
+LISTENING --request sent--> THINKING
+THINKING --response ready--> SPEAKING
+SPEAKING --finished--> IDLE
+```
+
+## AI tool architecture
+Actions should be explicit tools/services rather than free-form side effects from model text.
+
+Examples:
+- set timer
+- cancel timer
+- create reminder
+- get current time
+- show a message
+- change volume
+- future calendar/developer integrations
+
+The AI layer chooses an action; deterministic application code executes it.
+
+## Async model
+Network-heavy work should use async APIs where possible:
+- WebSocket handling
+- OpenAI/API requests
+- speech services
+- external integrations
+
+CPU-heavy work should not block the main event loop. If needed later, isolate it using an executor/process or separate service.
+
+## Persistence
+Do not require persistence for the first connectivity milestone.
+
+When timers/reminders/configuration need durable storage, start with the simplest appropriate local persistence. SQLite is a possible initial choice; PostgreSQL can be considered later if the project needs a server-grade relational database.
+
+## Deployment
+During development, the FastAPI backend can run on the developer machine with Uvicorn.
+
+Future deployment could be:
+- local desktop/server
+- Raspberry Pi or similar local host
+- cloud-hosted backend
+
+The ESP32 protocol should not depend on one deployment model.

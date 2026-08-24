@@ -1,0 +1,1 @@
+"""Desk Buddy domain state."""
