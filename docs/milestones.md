@@ -96,7 +96,8 @@ deferred.
 ## Milestone 5 — First Real ESP32
 
 ### Goal
-Replace the simulator with a physical ESP32-S3 for basic connectivity and controls.
+Replace the simulator with the available physical `esp32dev` board for basic
+connectivity and controls.
 
 Planned work:
 - PlatformIO firmware project
@@ -106,6 +107,20 @@ Planned work:
 - display abstraction
 - physical input abstraction
 - basic state rendering
+
+### Implemented scope
+
+- PlatformIO/Arduino firmware targeting the available `esp32dev` board
+- Wi-Fi and reconnecting WebSocket client
+- `ESP32` device registration using the same public protocol as the simulator
+- SSD1306 display abstraction with state, timer, and alert rendering
+- debounced active-low button abstraction
+- physical timer selection, start, cancel, and alert acknowledgement controls
+- backend protocol support and integration tests for hardware timer controls
+
+Milestone 5 remains in progress until the documented firmware can be freshly
+built, flashed, and verified end-to-end on the physical board. Rendering of
+general `DISPLAY_TEXT`, `SPEAK`, and reminder content is also still pending.
 
 ## Milestone 6 — Voice
 

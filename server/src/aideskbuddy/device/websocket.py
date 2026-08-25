@@ -15,6 +15,7 @@ from aideskbuddy.device.service import (
 from aideskbuddy.device.sessions import DeviceSession, SessionRegistry
 from aideskbuddy.protocol import (
     BuddyState,
+    ButtonPressed,
     DeviceConnected,
     DisplayText,
     ProtocolMessageError,
@@ -22,6 +23,8 @@ from aideskbuddy.protocol import (
     Speak,
     StateChanged,
     TimerCompleted,
+    TimerCancelled,
+    TimerStarted,
     UserText,
     parse_device_message,
 )
@@ -102,6 +105,23 @@ async def handle_device_websocket(
                         request_id=message.request_id,
                     )
                 await send(response_messages)
+            elif (
+                isinstance(message, ButtonPressed)
+                and message.button == "TIMER_START"
+                and message.duration_seconds is not None
+            ):
+                if timer.start(message.duration_seconds):
+                    await send(
+                        [
+                            TimerStarted(duration_seconds=message.duration_seconds),
+                            StateChanged(state=BuddyState.TIMER),
+                        ]
+                    )
+            elif isinstance(message, ButtonPressed) and message.button == "TIMER_CANCEL":
+                if timer.cancel():
+                    await send(
+                        [TimerCancelled(), StateChanged(state=BuddyState.IDLE)]
+                    )
             else:
                 await send(handle_device_message(message))
     except WebSocketDisconnect:

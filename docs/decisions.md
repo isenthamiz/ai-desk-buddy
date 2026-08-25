@@ -88,3 +88,14 @@ is offline, and mark them delivered only after their notification is sent.
 
 **Reason:** A single local backend does not require an ORM, database server, or
 message broker. A repository boundary keeps future storage changes possible.
+
+## ADR-014 — Initial physical development board
+
+**Decision:** Target the available PlatformIO `esp32dev` board for Milestone 5,
+while keeping hardware interaction behind display, input, and network boundaries.
+The protocol continues to identify physical firmware with device type `ESP32`.
+
+**Reason:** The available hardware is a standard ESP32 development board rather
+than an ESP32-S3. It is sufficient to prove physical connectivity, controls, and
+display rendering. Hardware abstractions limit the work needed to move to an
+ESP32-S3 later when voice or other hardware requirements demand it.

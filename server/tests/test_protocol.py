@@ -21,6 +21,11 @@ from aideskbuddy.protocol import (
             '"deviceType":"SIMULATOR"}',
             DeviceConnected,
         ),
+        (
+            '{"type":"DEVICE_CONNECTED","deviceId":"desk-buddy-esp32",'
+            '"deviceType":"ESP32"}',
+            DeviceConnected,
+        ),
         ('{"type":"USER_TEXT","text":"Hello"}', UserText),
         ('{"type":"BUTTON_PRESSED","button":"ACTION"}', ButtonPressed),
         ('{"type":"PRESENCE_CHANGED","present":true}', PresenceChanged),

@@ -1,7 +1,7 @@
 # Device ↔ Backend Protocol
 
 ## Status
-**Draft v0.2**
+**Draft v0.3**
 
 This protocol is intentionally small. Milestone 1 only needs enough messages to prove simulator ↔ FastAPI communication. Later milestones can extend it.
 
@@ -43,7 +43,8 @@ Identifies a simulator/device after connecting.
 }
 ```
 
-Possible future device type: `ESP32`.
+Supported device types are `SIMULATOR` and `ESP32`. The current physical target
+uses the `ESP32` value.
 
 ### USER_TEXT
 Temporary/diagnostic text input used by the simulator before voice is implemented.
@@ -70,7 +71,23 @@ order: `STATE_CHANGED(THINKING)`, `STATE_CHANGED(SPEAKING)`, `DISPLAY_TEXT`,
 }
 ```
 
-Button names are intentionally not fully defined until hardware/control behavior is finalized.
+Milestone 5 defines these hardware timer controls:
+
+- `TIMER_START` requires `durationSeconds` between 1 and 86,400. It asks the
+  backend to start its authoritative timer.
+- `TIMER_CANCEL` cancels the active backend timer and does not use
+  `durationSeconds`.
+
+```json
+{
+  "type": "BUTTON_PRESSED",
+  "button": "TIMER_START",
+  "durationSeconds": 60
+}
+```
+
+Other button names remain open until their behavior is finalized. Unknown button
+names are accepted at the protocol boundary and safely produce no action.
 
 ### PRESENCE_CHANGED
 

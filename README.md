@@ -1,9 +1,11 @@
 # AI Desk Buddy
 
-AI Desk Buddy is a physical AI desk companion built around an ESP32-S3 and a Python/FastAPI backend.
+AI Desk Buddy is a physical AI desk companion with ESP32 firmware and a
+Python/FastAPI backend. Milestone 5 targets the available `esp32dev` board; an
+ESP32-S3 remains a possible later hardware target.
 
 ## Status
-Milestone 4 implemented.
+Milestone 4 is complete. Milestone 5 physical-device integration is in progress.
 
 ## Planned repository structure
 
@@ -21,7 +23,8 @@ ai-desk-buddy/
 - Backend: Python 3.13+, FastAPI, Pydantic, Uvicorn
 - Dependency management: `uv`
 - Testing: `pytest`
-- Device: ESP32-S3
+- Current device: PlatformIO `esp32dev`
+- Possible later device: ESP32-S3
 - Firmware: C++ / PlatformIO / Arduino framework initially
 - Device communication: WebSocket
 
@@ -35,12 +38,14 @@ For Codex and contributors:
 6. Record important architectural changes in `docs/decisions.md`.
 
 ## Current milestone
-**Milestone 4 — Reminders & Durable State**
+**Milestone 5 — First Real ESP32**
 
 The backend and simulator communicate over WebSocket. Text entered in the simulator
 goes through an OpenAI-backed conversation service with deterministic timer and
 reminder tools. One-shot reminders are stored in SQLite, survive backend restarts,
-and are delivered when an offline device reconnects.
+and are delivered when an offline device reconnects. The `esp32dev` firmware now
+connects over the same WebSocket protocol and provides an SSD1306 face plus
+physical timer controls.
 
 ## Initial backend shape
 
@@ -113,3 +118,59 @@ The simulator connects to `ws://127.0.0.1:8000/ws/device`, identifies itself as
 `simulator-001`, and displays a green `CONNECTED` indicator. Use `F` for an
 action-button event, `P` for presence, and `T` for temporary text input.
 Ask Buddy to set or cancel a timer through the `T` text input.
+
+## Build and run the physical device
+
+The initial physical target is the available PlatformIO `esp32dev` board using
+the Arduino framework. Install PlatformIO Core or use the PlatformIO IDE
+extension, then create the local firmware configuration:
+
+```bash
+cp firmware/include/config.example.h firmware/include/config.h
+```
+
+Edit `firmware/include/config.h` with the Wi-Fi credentials and the backend
+computer's LAN IP address. Do not use `127.0.0.1`; from the ESP32 that address
+means the ESP32 itself. The local file is ignored by Git and must never be
+committed.
+
+Start the backend so it is reachable on the LAN:
+
+```bash
+cd server
+uv run uvicorn aideskbuddy.main:app --host 0.0.0.0 --port 8000
+```
+
+If a different port is used, set the same value in `config.h`. Build, upload,
+and monitor the firmware from the repository root:
+
+```bash
+pio run --project-dir firmware
+pio run --project-dir firmware --target upload
+pio device monitor --project-dir firmware
+```
+
+The current wiring is:
+
+| Part | Connection |
+| --- | --- |
+| SSD1306 SDA | GPIO 21 |
+| SSD1306 SCL | GPIO 22 |
+| SSD1306 I2C address | `0x3C` |
+| Increase button | GPIO 25 to GND |
+| Decrease button | GPIO 26 to GND |
+| Select button | GPIO 32 to GND |
+| Cancel button | GPIO 27 to GND |
+
+The buttons use the ESP32's internal pull-ups. On a successful connection, the
+serial monitor reports Wi-Fi and WebSocket connection followed by the initial
+`IDLE` state. Increase/decrease selects a timer duration, Select starts it, and
+Cancel cancels an active timer.
+
+For an end-to-end check:
+
+1. Confirm the serial monitor reports `WebSocket connected` and `Received state: IDLE`.
+2. Select and start a short timer using the physical buttons.
+3. Confirm the display enters the timer state and counts down.
+4. Cancel one timer and confirm the display returns to idle.
+5. Let another timer expire and confirm the alert renders.

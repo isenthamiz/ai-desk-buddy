@@ -30,7 +30,7 @@ class BuddyState(StrEnum):
 class DeviceConnected(ProtocolMessage):
     type: Literal["DEVICE_CONNECTED"] = "DEVICE_CONNECTED"
     device_id: str = Field(alias="deviceId", min_length=1)
-    device_type: Literal["SIMULATOR"] = Field(alias="deviceType")
+    device_type: Literal["SIMULATOR", "ESP32"] = Field(alias="deviceType")
 
 
 class UserText(ProtocolMessage):
@@ -41,6 +41,9 @@ class UserText(ProtocolMessage):
 class ButtonPressed(ProtocolMessage):
     type: Literal["BUTTON_PRESSED"] = "BUTTON_PRESSED"
     button: str = Field(min_length=1)
+    duration_seconds: int | None = Field(
+        default=None, alias="durationSeconds", gt=0, le=86_400
+    )
 
 
 class PresenceChanged(ProtocolMessage):

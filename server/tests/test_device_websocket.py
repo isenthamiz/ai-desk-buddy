@@ -228,6 +228,39 @@ def test_ai_tool_starts_timer_and_backend_reports_completion() -> None:
             assert websocket.receive_json()["state"] == "IDLE"
 
 
+def test_esp32_button_starts_and_cancels_timer() -> None:
+    app = create_app(ai_provider=FakeAIProvider())
+    with TestClient(app) as client:
+        with client.websocket_connect("/ws/device") as websocket:
+            websocket.send_json(
+                {
+                    "type": "DEVICE_CONNECTED",
+                    "deviceId": "desk-buddy-esp32",
+                    "deviceType": "ESP32",
+                }
+            )
+            assert websocket.receive_json()["state"] == "IDLE"
+
+            websocket.send_json(
+                {
+                    "type": "BUTTON_PRESSED",
+                    "button": "TIMER_START",
+                    "durationSeconds": 60,
+                }
+            )
+            assert websocket.receive_json() == {
+                "type": "TIMER_STARTED",
+                "durationSeconds": 60,
+            }
+            assert websocket.receive_json()["state"] == "TIMER"
+
+            websocket.send_json(
+                {"type": "BUTTON_PRESSED", "button": "TIMER_CANCEL"}
+            )
+            assert websocket.receive_json()["type"] == "TIMER_CANCELLED"
+            assert websocket.receive_json()["state"] == "IDLE"
+
+
 def test_overdue_reminder_is_delivered_when_device_reconnects(tmp_path) -> None:
     app = create_app(
         ai_provider=FakeAIProvider(),
