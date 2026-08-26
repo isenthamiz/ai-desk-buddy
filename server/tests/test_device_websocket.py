@@ -14,6 +14,7 @@ from aideskbuddy.ai import (
     ToolExecutor,
 )
 from aideskbuddy.main import create_app
+from aideskbuddy.weather import WeatherReport, WeatherService
 
 
 class FakeAIProvider:
@@ -63,6 +64,39 @@ class TimerAIProvider:
         assert execute_tool is not None
         await execute_tool("set_timer", {"duration_seconds": 1})
         return "Timer set for one second."
+
+
+class WeatherAIProvider:
+    async def reply(
+        self,
+        messages: Sequence[ConversationMessage],
+        *,
+        tools: Sequence[ToolDefinition] = (),
+        execute_tool: ToolExecutor | None = None,
+    ) -> str:
+        del messages
+        assert "get_weather" in {tool.name for tool in tools}
+        assert execute_tool is not None
+        result = await execute_tool("get_weather", {"period": "today"})
+        assert '"location": "Dublin"' in result
+        return "Dublin is partly cloudy and 15 degrees."
+
+
+class FakeWeatherProvider:
+    async def get_weather(self, period):
+        return WeatherReport(
+            location="Dublin",
+            period=period,
+            date="2026-08-26",
+            condition="partly cloudy",
+            current_temperature_c=15.2,
+            apparent_temperature_c=14.1,
+            minimum_temperature_c=10.2,
+            maximum_temperature_c=18.4,
+            precipitation_probability_percent=20,
+            precipitation_sum_mm=0.1,
+            maximum_wind_speed_kmh=18.0,
+        )
 
 
 def test_device_connects_and_exchanges_events_and_reactions() -> None:
@@ -224,6 +258,33 @@ def test_ai_tool_starts_timer_and_backend_reports_completion() -> None:
             assert websocket.receive_json()["type"] == "TIMER_COMPLETED"
             assert websocket.receive_json()["state"] == "ALERT"
             assert websocket.receive_json()["type"] == "DISPLAY_TEXT"
+            assert websocket.receive_json()["type"] == "SPEAK"
+            assert websocket.receive_json()["state"] == "IDLE"
+
+
+def test_ai_weather_tool_uses_existing_conversation_messages() -> None:
+    app = create_app(
+        ai_provider=WeatherAIProvider(),
+        weather_service=WeatherService(FakeWeatherProvider()),
+    )
+    with TestClient(app) as client:
+        with client.websocket_connect("/ws/device") as websocket:
+            websocket.send_json(
+                {
+                    "type": "DEVICE_CONNECTED",
+                    "deviceId": "simulator-001",
+                    "deviceType": "SIMULATOR",
+                }
+            )
+            websocket.receive_json()
+            websocket.send_json({"type": "USER_TEXT", "text": "Weather today?"})
+
+            assert websocket.receive_json()["state"] == "THINKING"
+            assert websocket.receive_json()["state"] == "SPEAKING"
+            assert websocket.receive_json() == {
+                "type": "DISPLAY_TEXT",
+                "text": "Dublin is partly cloudy and 15 degrees.",
+            }
             assert websocket.receive_json()["type"] == "SPEAK"
             assert websocket.receive_json()["state"] == "IDLE"
 

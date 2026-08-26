@@ -25,7 +25,8 @@ tools whenever the user asks to start/cancel a timer or create/cancel a reminder
 For relative reminder requests such as "in one minute", always use
 create_relative_reminder and convert the requested delay to seconds; never calculate an
 absolute date yourself. Use create_reminder only when the user gives an absolute date or
-clock time, passing a timezone-aware ISO 8601 timestamp. If a request needs an unavailable
+clock time, passing a timezone-aware ISO 8601 timestamp. Use get_weather for weather
+questions and only describe conditions returned by that tool. If a request needs an unavailable
 physical or external action, say briefly that you cannot do that yet."""
 
 

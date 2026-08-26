@@ -103,6 +103,10 @@ do not add device-to-server protocol messages. Relative requests such as "in one
 minute" use a duration in seconds so the backend calculates the due time from its
 authoritative clock; absolute requests use a timezone-aware timestamp.
 
+Weather reports are also obtained through a deterministic backend AI tool. They use
+the existing conversational `STATE_CHANGED`, `DISPLAY_TEXT`, and `SPEAK` sequence
+and therefore add no weather-specific device protocol message.
+
 ## Server → Device messages
 
 ### STATE_CHANGED

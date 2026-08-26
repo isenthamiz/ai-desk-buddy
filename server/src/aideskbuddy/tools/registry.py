@@ -4,7 +4,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError, field_validator
 
@@ -20,6 +20,7 @@ from aideskbuddy.protocol import (
 )
 from aideskbuddy.timer import TimerService
 from aideskbuddy.reminder import ReminderService
+from aideskbuddy.weather import WeatherProviderError, WeatherService
 
 
 class SetTimerArguments(BaseModel):
@@ -55,6 +56,11 @@ class CancelReminderArguments(BaseModel):
     reminder_id: str = Field(min_length=1)
 
 
+class GetWeatherArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    period: Literal["now", "today", "tomorrow"]
+
+
 @dataclass(frozen=True, slots=True)
 class ToolResult:
     output: str
@@ -69,10 +75,12 @@ class ToolRegistry:
         timer: TimerService,
         reminders: ReminderService | None = None,
         device_id: str | None = None,
+        weather: WeatherService | None = None,
     ) -> None:
         self._timer = timer
         self._reminders = reminders
         self._device_id = device_id
+        self._weather = weather
 
     @property
     def definitions(self) -> tuple[ToolDefinition, ...]:
@@ -113,6 +121,17 @@ class ToolRegistry:
                         parameters=CancelReminderArguments.model_json_schema(),
                     ),
                 ]
+            )
+        if self._weather is not None:
+            definitions.append(
+                ToolDefinition(
+                    name="get_weather",
+                    description=(
+                        "Get current, today's, or tomorrow's weather for Buddy's "
+                        "configured location. Use this for all weather questions."
+                    ),
+                    parameters=GetWeatherArguments.model_json_schema(),
+                )
             )
         return tuple(definitions)
 
@@ -194,8 +213,18 @@ class ToolRegistry:
                     output=json.dumps({"ok": True, "reminderId": parsed.reminder_id}),
                     messages=(ReminderCancelled(reminderId=parsed.reminder_id),),
                 )
+            if name == "get_weather" and self._weather is not None:
+                parsed = GetWeatherArguments.model_validate(arguments)
+                report = await self._weather.get_weather(parsed.period)
+                return ToolResult(
+                    output=json.dumps(
+                        {"ok": True, **report.model_dump(mode="json")}
+                    )
+                )
         except ValidationError as exc:
             return self._result(ok=False, error=str(exc))
+        except WeatherProviderError:
+            return self._result(ok=False, error="weather service unavailable")
         return self._result(ok=False, error=f"unknown tool: {name}")
 
     @staticmethod

@@ -99,3 +99,19 @@ The protocol continues to identify physical firmware with device type `ESP32`.
 than an ESP32-S3. It is sufficient to prove physical connectivity, controls, and
 display rendering. Hardware abstractions limit the work needed to move to an
 ESP32-S3 later when voice or other hardware requirements demand it.
+
+## ADR-015 — Initial weather reporting
+
+**Decision:** Add weather as a backend AI tool for one fixed, explicitly configured
+location. Use a provider-neutral async boundary with Open-Meteo as the initial
+adapter, cache each report period in memory for ten minutes, and reuse the existing
+conversation display/speech messages.
+
+The initial periods are `now`, `today`, and `tomorrow`. Automatic location
+detection, free-form geocoding, scheduled reports, alerts, and weather persistence
+are deferred.
+
+**Reason:** A desk device normally stays in one place. Explicit coordinates are
+predictable and privacy-preserving, while a provider boundary avoids coupling the
+Buddy's business logic to Open-Meteo. Existing protocol messages already express
+the required user experience.

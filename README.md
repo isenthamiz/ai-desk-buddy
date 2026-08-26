@@ -45,7 +45,8 @@ goes through an OpenAI-backed conversation service with deterministic timer and
 reminder tools. One-shot reminders are stored in SQLite, survive backend restarts,
 and are delivered when an offline device reconnects. The `esp32dev` firmware now
 connects over the same WebSocket protocol and provides an SSD1306 face plus
-physical timer controls.
+physical timer controls. An optional Open-Meteo integration gives concise current,
+today, and tomorrow weather reports for a configured fixed location.
 
 ## Initial backend shape
 
@@ -88,6 +89,19 @@ The health endpoint is available at `http://127.0.0.1:8000/health`.
 
 Reminder data defaults to `server/data/buddy.db`. Set `BUDDY_DATABASE_PATH` to use
 a different SQLite file. Reminder due times are stored in UTC.
+
+To enable weather reports, configure all four location values in `server/.env`:
+
+```dotenv
+BUDDY_WEATHER_LOCATION_NAME=Dublin
+BUDDY_WEATHER_LATITUDE=53.3498
+BUDDY_WEATHER_LONGITUDE=-6.2603
+BUDDY_WEATHER_TIMEZONE=Europe/Dublin
+```
+
+Ask Buddy for the weather now, today, or tomorrow. Forecasts come from Open-Meteo,
+are cached for ten minutes, and use the existing display and speech messages.
+Open-Meteo attribution and usage terms apply.
 
 Run the tests from the `server/` directory:
 

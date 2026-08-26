@@ -12,6 +12,7 @@ from aideskbuddy.device.sessions import SessionRegistry
 from aideskbuddy.device.websocket import handle_device_websocket
 from aideskbuddy.protocol import BuddyState, DisplayText, ReminderDue, Speak, StateChanged
 from aideskbuddy.reminder import Reminder, ReminderService, SQLiteReminderRepository
+from aideskbuddy.weather import OpenMeteoWeatherProvider, WeatherService
 
 SERVER_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(SERVER_ROOT / ".env")
@@ -27,11 +28,44 @@ def _ai_provider_from_environment() -> AIProvider:
     )
 
 
+def _weather_service_from_environment() -> WeatherService | None:
+    latitude = os.getenv("BUDDY_WEATHER_LATITUDE")
+    longitude = os.getenv("BUDDY_WEATHER_LONGITUDE")
+    location_name = os.getenv("BUDDY_WEATHER_LOCATION_NAME")
+    timezone = os.getenv("BUDDY_WEATHER_TIMEZONE")
+    values = (latitude, longitude, location_name, timezone)
+    if not any(values):
+        return None
+    if not all(values):
+        raise ValueError(
+            "weather requires BUDDY_WEATHER_LATITUDE, BUDDY_WEATHER_LONGITUDE, "
+            "BUDDY_WEATHER_LOCATION_NAME, and BUDDY_WEATHER_TIMEZONE"
+        )
+    try:
+        parsed_latitude = float(latitude)
+        parsed_longitude = float(longitude)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("weather latitude and longitude must be numbers") from exc
+    if not -90 <= parsed_latitude <= 90:
+        raise ValueError("weather latitude must be between -90 and 90")
+    if not -180 <= parsed_longitude <= 180:
+        raise ValueError("weather longitude must be between -180 and 180")
+    return WeatherService(
+        OpenMeteoWeatherProvider(
+            latitude=parsed_latitude,
+            longitude=parsed_longitude,
+            location_name=str(location_name),
+            timezone=str(timezone),
+        )
+    )
+
+
 def create_app(
     *,
     ai_provider: AIProvider | None = None,
     database_path: str | Path | None = None,
     reminder_poll_interval: float = 1.0,
+    weather_service: WeatherService | None = None,
 ) -> FastAPI:
     """Create and configure the backend application."""
     sessions = SessionRegistry()
@@ -78,6 +112,7 @@ def create_app(
     application.state.ai_provider = ai_provider or _ai_provider_from_environment()
     application.state.reminders = reminders
     application.state.reminder_repository = repository
+    application.state.weather = weather_service or _weather_service_from_environment()
 
     @application.get("/health")
     async def health() -> dict[str, str]:
@@ -90,6 +125,7 @@ def create_app(
             application.state.sessions,
             application.state.ai_provider,
             application.state.reminders,
+            application.state.weather,
         )
 
     return application

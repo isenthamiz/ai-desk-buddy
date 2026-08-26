@@ -122,6 +122,17 @@ Milestone 5 remains in progress until the documented firmware can be freshly
 built, flashed, and verified end-to-end on the physical board. Rendering of
 general `DISPLAY_TEXT`, `SPEAK`, and reminder content is also still pending.
 
+### Incremental feature — Weather report
+
+- backend-only `get_weather` AI tool for `now`, `today`, and `tomorrow`
+- one fixed location configured through environment variables
+- provider-neutral service with an Open-Meteo adapter
+- ten-minute in-memory cache and graceful provider failures
+- existing `DISPLAY_TEXT` and `SPEAK` output; no new device protocol messages
+
+Free-form place lookup, automatic location detection, severe-weather alerts,
+scheduled reports, and persistent weather data are deferred.
+
 ## Milestone 6 — Voice
 
 ### Goal

@@ -62,6 +62,8 @@ This document captures the currently selected product areas. It is a roadmap, no
 14. **Desk Dashboard**
     - lightweight daily information/status
     - weather/environment information is not intended to be central
+    - initial weather reporting supports current, today, and tomorrow conditions
+      for one backend-configured location
 
 15. **Morning Briefing**
     - concise start-of-day summary

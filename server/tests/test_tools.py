@@ -8,6 +8,7 @@ import pytest
 from aideskbuddy.timer import TimerService
 from aideskbuddy.tools import ToolRegistry
 from aideskbuddy.reminder import ReminderService, SQLiteReminderRepository
+from aideskbuddy.weather import WeatherProviderError, WeatherReport, WeatherService
 
 
 @pytest.mark.asyncio
@@ -106,4 +107,59 @@ async def test_relative_reminder_tool_uses_delay_seconds(tmp_path) -> None:
 
     assert json.loads(created.output)["ok"] is True
     assert created.messages[0].type == "REMINDER_CREATED"
+    await timer.close()
+
+
+@pytest.mark.asyncio
+async def test_get_weather_tool_returns_structured_report() -> None:
+    async def complete() -> None:
+        pass
+
+    class FakeWeatherProvider:
+        async def get_weather(self, period):
+            return WeatherReport(
+                location="Dublin",
+                period=period,
+                date="2026-08-26",
+                condition="partly cloudy",
+                current_temperature_c=15.2,
+                apparent_temperature_c=14.1,
+                minimum_temperature_c=10.2,
+                maximum_temperature_c=18.4,
+                precipitation_probability_percent=70,
+                precipitation_sum_mm=2.8,
+                maximum_wind_speed_kmh=25.0,
+            )
+
+    timer = TimerService(complete)
+    tools = ToolRegistry(timer, weather=WeatherService(FakeWeatherProvider()))
+
+    result = await tools.execute("get_weather", {"period": "today"})
+    output = json.loads(result.output)
+
+    assert output["ok"] is True
+    assert output["location"] == "Dublin"
+    assert output["precipitation_probability_percent"] == 70
+    assert result.messages == ()
+    await timer.close()
+
+
+@pytest.mark.asyncio
+async def test_get_weather_tool_handles_provider_failure() -> None:
+    async def complete() -> None:
+        pass
+
+    class FailingWeatherProvider:
+        async def get_weather(self, _period):
+            raise WeatherProviderError("network failed")
+
+    timer = TimerService(complete)
+    tools = ToolRegistry(timer, weather=WeatherService(FailingWeatherProvider()))
+
+    result = await tools.execute("get_weather", {"period": "now"})
+
+    assert json.loads(result.output) == {
+        "ok": False,
+        "error": "weather service unavailable",
+    }
     await timer.close()
