@@ -5,17 +5,25 @@ from dataclasses import dataclass
 
 from fastapi import WebSocket
 
-from aideskbuddy.protocol import ServerMessage
+from aideskbuddy.protocol import BuddyState, ServerMessage, UserText
 
 MessageSender = Callable[[list[ServerMessage]], Awaitable[None]]
+TextHandler = Callable[[UserText], Awaitable[None]]
+TimerStarter = Callable[[int], Awaitable[bool]]
+TimerCanceller = Callable[[], Awaitable[bool]]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class DeviceSession:
     device_id: str
     device_type: str
     websocket: WebSocket
     send: MessageSender
+    send_text: TextHandler
+    start_timer: TimerStarter
+    cancel_timer: TimerCanceller
+    state: BuddyState = BuddyState.IDLE
+    timer_duration_seconds: int | None = None
 
 
 class SessionRegistry:
@@ -33,6 +41,9 @@ class SessionRegistry:
 
     def get(self, device_id: str) -> DeviceSession | None:
         return self._sessions.get(device_id)
+
+    def all(self) -> tuple[DeviceSession, ...]:
+        return tuple(self._sessions.values())
 
     def __len__(self) -> int:
         return len(self._sessions)

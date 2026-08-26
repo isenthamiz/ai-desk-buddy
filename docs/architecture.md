@@ -107,6 +107,12 @@ WebSocket is the primary device/backend channel because the connection is bidire
 
 REST can be added for operations that naturally fit request/response semantics, such as health/configuration endpoints.
 
+The Buddy Control Center is a standalone Expo/React Native application for web,
+iPhone, and future Android use. It uses a separate client-facing REST API. App
+actions call backend services, and those services send the existing device protocol
+messages to the simulator or firmware. The app does not connect to a device or
+manufacture device protocol messages directly.
+
 See `protocol.md`.
 
 ## Device simulator

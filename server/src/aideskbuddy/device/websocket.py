@@ -49,11 +49,20 @@ async def handle_device_websocket(
     await websocket.accept()
     session: DeviceSession | None = None
     send_lock = asyncio.Lock()
+    conversation_lock = asyncio.Lock()
     timer: TimerService | None = None
 
     async def send(messages: list[ServerMessage]) -> None:
         async with send_lock:
             await _send_messages(websocket, messages)
+            if session is not None:
+                for message in messages:
+                    if isinstance(message, StateChanged):
+                        session.state = message.state
+                    elif isinstance(message, TimerStarted):
+                        session.timer_duration_seconds = message.duration_seconds
+                    elif isinstance(message, (TimerCancelled, TimerCompleted)):
+                        session.timer_duration_seconds = None
 
     async def timer_completed() -> None:
         alert = "Your timer has finished."
@@ -66,6 +75,42 @@ async def handle_device_websocket(
                 StateChanged(state=BuddyState.IDLE),
             ]
         )
+
+    async def send_text(message: UserText) -> None:
+        assert conversation is not None
+        assert timer is not None
+        async with conversation_lock:
+            await send(
+                [StateChanged(state=BuddyState.THINKING, request_id=message.request_id)]
+            )
+            response_messages = await handle_user_text(message, conversation)
+            if timer.is_active:
+                response_messages[-1] = StateChanged(
+                    state=BuddyState.TIMER,
+                    request_id=message.request_id,
+                )
+            await send(response_messages)
+
+    async def start_timer(duration_seconds: int) -> bool:
+        assert timer is not None
+        if not timer.start(duration_seconds):
+            return False
+        await send(
+            [
+                TimerStarted(duration_seconds=duration_seconds),
+                StateChanged(state=BuddyState.TIMER),
+            ]
+        )
+        return True
+
+    async def cancel_timer() -> bool:
+        assert timer is not None
+        if not timer.cancel():
+            return False
+        await send([TimerCancelled(), StateChanged(state=BuddyState.IDLE)])
+        return True
+
+    conversation: ConversationService | None = None
     try:
         try:
             first_message = parse_device_message(await websocket.receive_text())
@@ -77,18 +122,23 @@ async def handle_device_websocket(
             await websocket.close(code=1008, reason="DEVICE_CONNECTED required")
             return
 
+        timer = TimerService(timer_completed)
+        tools = ToolRegistry(
+            timer, reminders, first_message.device_id, weather, todoist
+        )
+        conversation = ConversationService(ai_provider, tools, send)
         session = DeviceSession(
             device_id=first_message.device_id,
             device_type=first_message.device_type,
             websocket=websocket,
             send=send,
+            send_text=send_text,
+            start_timer=start_timer,
+            cancel_timer=cancel_timer,
         )
         sessions.connect(session)
         LOGGER.info("Device connected: %s", session.device_id)
         await send(initial_messages(first_message))
-        timer = TimerService(timer_completed)
-        tools = ToolRegistry(timer, reminders, session.device_id, weather, todoist)
-        conversation = ConversationService(ai_provider, tools, send)
         await reminders.deliver_due(session.device_id)
 
         while True:
@@ -99,33 +149,15 @@ async def handle_device_websocket(
                 LOGGER.warning("Ignoring invalid device message: %s", exc)
                 continue
             if isinstance(message, UserText):
-                await send(
-                    [StateChanged(state=BuddyState.THINKING, request_id=message.request_id)],
-                )
-                response_messages = await handle_user_text(message, conversation)
-                if timer.is_active:
-                    response_messages[-1] = StateChanged(
-                        state=BuddyState.TIMER,
-                        request_id=message.request_id,
-                    )
-                await send(response_messages)
+                await send_text(message)
             elif (
                 isinstance(message, ButtonPressed)
                 and message.button == "TIMER_START"
                 and message.duration_seconds is not None
             ):
-                if timer.start(message.duration_seconds):
-                    await send(
-                        [
-                            TimerStarted(duration_seconds=message.duration_seconds),
-                            StateChanged(state=BuddyState.TIMER),
-                        ]
-                    )
+                await start_timer(message.duration_seconds)
             elif isinstance(message, ButtonPressed) and message.button == "TIMER_CANCEL":
-                if timer.cancel():
-                    await send(
-                        [TimerCancelled(), StateChanged(state=BuddyState.IDLE)]
-                    )
+                await cancel_timer()
             else:
                 await send(handle_device_message(message))
     except WebSocketDisconnect:

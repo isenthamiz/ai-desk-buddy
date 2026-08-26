@@ -81,9 +81,15 @@ For the inventory of capabilities that already exist, see
     - playful animations, reactions, or hidden interactions
 
 18. **Device Management**
-    - connectivity/status
-    - configuration
-    - future OTA/update capabilities
+   - connectivity/status
+   - configuration
+   - future OTA/update capabilities
+
+19. **Buddy Control Center**
+   - universal Expo application for responsive web and native mobile use
+   - connection and current-state visibility
+   - text, timer, and reminder controls
+   - broader settings and remote access can be considered later
 
 ## Explicitly out of scope for the current concept
 - desk environmental sensing as a core feature

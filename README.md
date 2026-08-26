@@ -13,6 +13,7 @@ Milestone 4 is complete. Milestone 5 physical-device integration is in progress.
 ai-desk-buddy/
 ├── AGENTS.md
 ├── README.md
+├── apps/
 ├── docs/
 ├── server/
 ├── firmware/
@@ -27,6 +28,7 @@ ai-desk-buddy/
 - Possible later device: ESP32-S3
 - Firmware: C++ / PlatformIO / Arduino framework initially
 - Device communication: WebSocket
+- Control app: Expo SDK 57, React Native, TypeScript, Expo Router
 
 ## Start here
 For Codex and contributors:
@@ -88,6 +90,14 @@ conversational requests return a graceful configuration error response until the
 key is set.
 
 The health endpoint is available at `http://127.0.0.1:8000/health`.
+
+The Buddy Control Center is a separate universal Expo app in
+`apps/buddy-control/`. It shows the configured Buddy's connection and current
+state, sends text, controls timers, and manages reminders from web or iPhone. It
+targets `simulator-001` by default; set `BUDDY_CONTROL_DEVICE_ID` in `server/.env`
+to use a different device ID. See `apps/buddy-control/README.md` for web and iPhone
+setup. The initial API has no authentication and should only be exposed on a
+trusted local network.
 
 Reminder data defaults to `server/data/buddy.db`. Set `BUDDY_DATABASE_PATH` to use
 a different SQLite file. Reminder due times are stored in UTC.

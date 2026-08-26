@@ -87,3 +87,21 @@ useful.
 - General display/speech/reminder content rendering and physical end-to-end
   verification remain incomplete, so Milestone 5 is still in progress.
 
+## Buddy Control Center
+
+- Standalone Expo SDK 57 application using React Native, TypeScript, Expo Router,
+  and React Native Web from one shared codebase.
+- Responsive web layout and native iPhone-compatible interface.
+- Backend health, device connection, device type, and current Buddy state display.
+- Start and cancel the connected device's backend-authoritative timer.
+- List, create, and cancel durable reminders, including while the device is offline.
+- Send text through the same conversation flow used by simulator text input.
+- Client-facing REST endpoints remain separate from the device WebSocket protocol,
+  with explicitly configured development CORS origins for Expo web.
+- The initial version targets one configured device ID (`simulator-001` by default),
+  polls for updates, has no authentication, and is intended only for trusted local
+  development. A physical phone requires the backend computer's LAN address.
+  The development iOS configuration permits local cleartext HTTP and must move to
+  authenticated HTTPS before distribution.
+  Remote access, authentication, multiple-device selection, App Store packaging,
+  and broader settings are not implemented.

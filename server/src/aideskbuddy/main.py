@@ -5,9 +5,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from aideskbuddy.ai import AIProvider, OpenAIProvider, UnavailableAIProvider
+from aideskbuddy.control import create_control_router
 from aideskbuddy.device.sessions import SessionRegistry
 from aideskbuddy.device.websocket import handle_device_websocket
 from aideskbuddy.protocol import BuddyState, DisplayText, ReminderDue, Speak, StateChanged
@@ -68,6 +70,13 @@ def _todoist_service_from_environment() -> TodoistService | None:
     return TodoistService(TodoistRestProvider(token=token))
 
 
+def _control_origins_from_environment() -> list[str]:
+    configured = os.getenv("BUDDY_CONTROL_ALLOWED_ORIGINS")
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return ["http://localhost:8081", "http://127.0.0.1:8081"]
+
+
 def create_app(
     *,
     ai_provider: AIProvider | None = None,
@@ -75,6 +84,8 @@ def create_app(
     reminder_poll_interval: float = 1.0,
     weather_service: WeatherService | None = None,
     todoist_service: TodoistService | None = None,
+    control_device_id: str | None = None,
+    control_allowed_origins: list[str] | None = None,
 ) -> FastAPI:
     """Create and configure the backend application."""
     sessions = SessionRegistry()
@@ -123,6 +134,28 @@ def create_app(
     application.state.reminder_repository = repository
     application.state.weather = weather_service or _weather_service_from_environment()
     application.state.todoist = todoist_service or _todoist_service_from_environment()
+    application.state.control_device_id = control_device_id or os.getenv(
+        "BUDDY_CONTROL_DEVICE_ID", "simulator-001"
+    )
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=(
+            control_allowed_origins
+            if control_allowed_origins is not None
+            else _control_origins_from_environment()
+        ),
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Content-Type"],
+    )
+    application.include_router(
+        create_control_router(
+            sessions,
+            reminders,
+            repository,
+            application.state.control_device_id,
+        )
+    )
 
     @application.get("/health")
     async def health() -> dict[str, str]:

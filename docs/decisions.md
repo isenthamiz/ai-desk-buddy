@@ -132,3 +132,24 @@ device messages.
 requiring synchronization, conflict resolution, new device protocol messages, or a
 configuration UI. Exact-ID completion prevents ambiguous task names from causing an
 unintended mutation.
+
+## ADR-017 — Initial Buddy Control Center
+
+**Decision:** Build the control interface as a standalone Expo SDK 57 application
+using React Native, TypeScript, Expo Router, and React Native Web. One shared app
+targets web and iPhone initially, with Android available later. FastAPI exposes a
+client-facing REST API for status, text conversation, timers, and reminders. App
+actions reuse backend services and the existing device protocol; the app never
+connects directly to the simulator or ESP32.
+
+Target one configured device ID, defaulting to `simulator-001`, and use polling for
+the initial interface. Allow explicit Expo web origins through CORS. Keep the
+control API unauthenticated and local-only during development. Authentication,
+remote access, multiple-device selection, a dedicated client WebSocket, signed
+mobile builds, and store distribution are deferred.
+
+**Reason:** Expo and React Native Web provide one maintainable interface codebase
+for browser and native mobile use. The simulator can exercise it before physical
+hardware or signed mobile distribution is available. Separating the client API from
+the device protocol preserves the backend's authority over business logic and
+device behavior.

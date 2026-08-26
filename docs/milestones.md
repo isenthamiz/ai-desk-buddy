@@ -145,6 +145,19 @@ scheduled reports, and persistent weather data are deferred.
 OAuth, projects, sections, labels, assignments, editing, deletion, background
 synchronization, and Todoist-driven Buddy alerts are deferred.
 
+### Incremental feature — Buddy Control Center
+
+- standalone Expo SDK 57 app sharing React Native code across web and iPhone
+- connection, health, and current-state visibility for one configured Buddy
+- controls for text conversation and backend timers
+- durable reminder listing, creation, and cancellation
+- client REST API and Expo development CORS kept separate from the device protocol
+- simulator-compatible behavior using the same backend services and device messages
+
+Authentication, remote access, multiple-device selection, live client WebSocket
+updates, integration settings, signed mobile builds, and App Store distribution are
+deferred.
+
 ## Milestone 6 — Voice
 
 ### Goal

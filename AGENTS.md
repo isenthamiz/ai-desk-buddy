@@ -9,6 +9,7 @@ The repository is the source of truth. Read the relevant files in `docs/` before
 - `server/` — Python + FastAPI backend
 - `firmware/` — ESP32-S3 firmware using C++ / PlatformIO / Arduino framework initially
 - `simulator/` — software device simulator used before and alongside hardware
+- `apps/buddy-control/` — Expo/React Native control app for web and mobile
 - `docs/` — architecture, features, protocol, milestones, and decisions
 
 ## Backend conventions

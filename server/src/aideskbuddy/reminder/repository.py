@@ -103,6 +103,16 @@ class SQLiteReminderRepository:
             ).fetchone()
         return None if row is None else self._from_row(row)
 
+    def pending_for_device(self, device_id: str) -> list[Reminder]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM reminders
+                WHERE device_id = ? AND status = ?
+                ORDER BY due_at, created_at""",
+                (device_id, ReminderStatus.PENDING.value),
+            ).fetchall()
+        return [self._from_row(row) for row in rows]
+
     @staticmethod
     def _from_row(row: sqlite3.Row) -> Reminder:
         return Reminder(
