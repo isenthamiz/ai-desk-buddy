@@ -2,6 +2,9 @@
 
 This document captures the currently selected product areas. It is a roadmap, not a commitment to implement every feature in the first version.
 
+For the inventory of capabilities that already exist, see
+[`implemented-features.md`](implemented-features.md).
+
 ## Selected feature areas
 
 1. **Personality & Animated Face**

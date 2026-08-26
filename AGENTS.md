@@ -48,6 +48,10 @@ Do not silently invent or change protocol messages. Update `docs/protocol.md` wh
 - Prefer the simplest implementation that satisfies the current milestone.
 - Avoid premature abstractions.
 - Do not implement future milestone features unless needed by the current task.
+- Update `docs/implemented-features.md` in the same change whenever a feature is
+  added, materially changed, or removed. Record only behavior that is actually
+  implemented, including important limitations; keep planned work in
+  `docs/features.md` or `docs/milestones.md`.
 - Keep hardware-specific code behind abstractions where practical so the simulator can exercise the same concepts.
 - Run relevant tests before completing a task.
 - If requirements are ambiguous or conflict with the docs, call out the ambiguity rather than guessing.
@@ -56,6 +60,7 @@ Do not silently invent or change protocol messages. Update `docs/protocol.md` wh
 Before substantial work, read:
 1. `docs/architecture.md`
 2. `docs/features.md`
-3. `docs/protocol.md`
-4. `docs/milestones.md`
-5. `docs/decisions.md`
+3. `docs/implemented-features.md`
+4. `docs/protocol.md`
+5. `docs/milestones.md`
+6. `docs/decisions.md`

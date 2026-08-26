@@ -33,9 +33,10 @@ For Codex and contributors:
 1. Read `AGENTS.md`.
 2. Read `docs/architecture.md`.
 3. Review `docs/features.md`.
-4. Follow `docs/protocol.md`.
-5. Implement only the current work in `docs/milestones.md`.
-6. Record important architectural changes in `docs/decisions.md`.
+4. Check `docs/implemented-features.md` for what already exists.
+5. Follow `docs/protocol.md`.
+6. Implement only the current work in `docs/milestones.md`.
+7. Record important architectural changes in `docs/decisions.md`.
 
 ## Current milestone
 **Milestone 5 — First Real ESP32**
