@@ -46,7 +46,8 @@ reminder tools. One-shot reminders are stored in SQLite, survive backend restart
 and are delivered when an offline device reconnects. The `esp32dev` firmware now
 connects over the same WebSocket protocol and provides an SSD1306 face plus
 physical timer controls. An optional Open-Meteo integration gives concise current,
-today, and tomorrow weather reports for a configured fixed location.
+today, and tomorrow weather reports for a configured fixed location. An optional
+Todoist integration can create, list, and complete tasks using a personal API token.
 
 ## Initial backend shape
 
@@ -102,6 +103,18 @@ BUDDY_WEATHER_TIMEZONE=Europe/Dublin
 Ask Buddy for the weather now, today, or tomorrow. Forecasts come from Open-Meteo,
 are cached for ten minutes, and use the existing display and speech messages.
 Open-Meteo attribution and usage terms apply.
+
+To enable Todoist task tools, copy your personal token from Todoist Settings →
+Integrations → Developer and add it to `server/.env`:
+
+```dotenv
+TODOIST_API_TOKEN=your-personal-api-token
+```
+
+Restart the backend, then ask Buddy to add a Todoist task, list today's, overdue,
+or upcoming tasks, or complete a task it has just created or listed. The token is
+secret and must never be committed. AI Desk Buddy is not created by, affiliated
+with, or supported by Todoist.
 
 Run the tests from the `server/` directory:
 

@@ -107,6 +107,10 @@ Weather reports are also obtained through a deterministic backend AI tool. They 
 the existing conversational `STATE_CHANGED`, `DISPLAY_TEXT`, and `SPEAK` sequence
 and therefore add no weather-specific device protocol message.
 
+Todoist task creation, listing, and completion are deterministic backend AI tools.
+Their results use the same existing conversational message sequence and add no
+Todoist-specific device protocol messages.
+
 ## Server → Device messages
 
 ### STATE_CHANGED

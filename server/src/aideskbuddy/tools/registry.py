@@ -3,10 +3,18 @@
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from aideskbuddy.ai import ToolDefinition
 from aideskbuddy.protocol import (
@@ -19,6 +27,7 @@ from aideskbuddy.protocol import (
     TimerStarted,
 )
 from aideskbuddy.timer import TimerService
+from aideskbuddy.todoist import TodoistProviderError, TodoistService
 from aideskbuddy.reminder import ReminderService
 from aideskbuddy.weather import WeatherProviderError, WeatherService
 
@@ -61,6 +70,33 @@ class GetWeatherArguments(BaseModel):
     period: Literal["now", "today", "tomorrow"]
 
 
+class CreateTodoistTaskArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1, max_length=500)
+    due_date: date | None
+    due_at: datetime | None
+
+    @model_validator(mode="after")
+    def validate_due_fields(self) -> "CreateTodoistTaskArguments":
+        if self.due_date is not None and self.due_at is not None:
+            raise ValueError("provide due_date or due_at, not both")
+        if self.due_at is not None and (
+            self.due_at.tzinfo is None or self.due_at.utcoffset() is None
+        ):
+            raise ValueError("due_at must include a UTC offset")
+        return self
+
+
+class ListTodoistTasksArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    period: Literal["today", "overdue", "upcoming"]
+
+
+class CompleteTodoistTaskArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_id: str = Field(min_length=1, max_length=100)
+
+
 @dataclass(frozen=True, slots=True)
 class ToolResult:
     output: str
@@ -76,11 +112,13 @@ class ToolRegistry:
         reminders: ReminderService | None = None,
         device_id: str | None = None,
         weather: WeatherService | None = None,
+        todoist: TodoistService | None = None,
     ) -> None:
         self._timer = timer
         self._reminders = reminders
         self._device_id = device_id
         self._weather = weather
+        self._todoist = todoist
 
     @property
     def definitions(self) -> tuple[ToolDefinition, ...]:
@@ -132,6 +170,35 @@ class ToolRegistry:
                     ),
                     parameters=GetWeatherArguments.model_json_schema(),
                 )
+            )
+        if self._todoist is not None:
+            definitions.extend(
+                [
+                    ToolDefinition(
+                        name="create_todoist_task",
+                        description=(
+                            "Create a Todoist Inbox task. Pass a date-only due_date, "
+                            "a timezone-aware due_at, or null for both when not given."
+                        ),
+                        parameters=CreateTodoistTaskArguments.model_json_schema(),
+                    ),
+                    ToolDefinition(
+                        name="list_todoist_tasks",
+                        description=(
+                            "List up to five active Todoist tasks for today, overdue, "
+                            "or the upcoming seven days."
+                        ),
+                        parameters=ListTodoistTasksArguments.model_json_schema(),
+                    ),
+                    ToolDefinition(
+                        name="complete_todoist_task",
+                        description=(
+                            "Complete a Todoist task using the exact task_id returned "
+                            "by create_todoist_task or list_todoist_tasks."
+                        ),
+                        parameters=CompleteTodoistTaskArguments.model_json_schema(),
+                    ),
+                ]
             )
         return tuple(definitions)
 
@@ -221,10 +288,43 @@ class ToolRegistry:
                         {"ok": True, **report.model_dump(mode="json")}
                     )
                 )
+            if name == "create_todoist_task" and self._todoist is not None:
+                parsed = CreateTodoistTaskArguments.model_validate(arguments)
+                task = await self._todoist.create_task(
+                    parsed.content,
+                    due_date=parsed.due_date,
+                    due_at=parsed.due_at,
+                )
+                return ToolResult(
+                    output=json.dumps(
+                        {"ok": True, "task": task.model_dump(mode="json")}
+                    )
+                )
+            if name == "list_todoist_tasks" and self._todoist is not None:
+                parsed = ListTodoistTasksArguments.model_validate(arguments)
+                tasks = await self._todoist.list_tasks(parsed.period)
+                return ToolResult(
+                    output=json.dumps(
+                        {
+                            "ok": True,
+                            "period": parsed.period,
+                            "count": len(tasks),
+                            "tasks": [task.model_dump(mode="json") for task in tasks],
+                        }
+                    )
+                )
+            if name == "complete_todoist_task" and self._todoist is not None:
+                parsed = CompleteTodoistTaskArguments.model_validate(arguments)
+                await self._todoist.complete_task(parsed.task_id)
+                return ToolResult(
+                    output=json.dumps({"ok": True, "taskId": parsed.task_id})
+                )
         except ValidationError as exc:
             return self._result(ok=False, error=str(exc))
         except WeatherProviderError:
             return self._result(ok=False, error="weather service unavailable")
+        except TodoistProviderError as exc:
+            return self._result(ok=False, error=str(exc))
         return self._result(ok=False, error=f"unknown tool: {name}")
 
     @staticmethod

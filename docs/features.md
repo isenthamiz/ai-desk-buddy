@@ -34,6 +34,7 @@ This document captures the currently selected product areas. It is a roadmap, no
 7. **AI Agent / Tools**
    - structured tools for deterministic actions
    - extend integrations incrementally
+   - initial Todoist integration creates, lists, and completes tasks
 
 8. **Quick Notes / Ideas**
    - capture short notes/ideas through the buddy

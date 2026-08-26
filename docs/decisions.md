@@ -115,3 +115,20 @@ are deferred.
 predictable and privacy-preserving, while a provider boundary avoids coupling the
 Buddy's business logic to Open-Meteo. Existing protocol messages already express
 the required user experience.
+
+## ADR-016 — Initial Todoist integration
+
+**Decision:** Integrate Todoist through a provider-neutral async service and the
+current Todoist API v1. The single-user development deployment reads a personal API
+token from `TODOIST_API_TOKEN`; OAuth is deferred until multi-user configuration is
+required.
+
+Expose deterministic tools to create Inbox tasks, list at most five active tasks for
+`today`, `overdue`, or `upcoming`, and complete a task using its exact Todoist ID.
+Todoist tasks and Buddy reminders remain separate. Reuse the existing conversation
+device messages.
+
+**Reason:** These operations cover useful hands-free task capture and review without
+requiring synchronization, conflict resolution, new device protocol messages, or a
+configuration UI. Exact-ID completion prevents ambiguous task names from causing an
+unintended mutation.

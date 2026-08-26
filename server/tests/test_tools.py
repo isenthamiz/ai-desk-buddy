@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from aideskbuddy.timer import TimerService
+from aideskbuddy.todoist import TodoistService, TodoistTask
 from aideskbuddy.tools import ToolRegistry
 from aideskbuddy.reminder import ReminderService, SQLiteReminderRepository
 from aideskbuddy.weather import WeatherProviderError, WeatherReport, WeatherService
@@ -162,4 +163,88 @@ async def test_get_weather_tool_handles_provider_failure() -> None:
         "ok": False,
         "error": "weather service unavailable",
     }
+    await timer.close()
+
+
+@pytest.mark.asyncio
+async def test_todoist_tools_create_list_and_complete_tasks() -> None:
+    async def complete() -> None:
+        pass
+
+    class FakeTodoistProvider:
+        def __init__(self) -> None:
+            self.completed_id: str | None = None
+
+        async def create_task(self, content, *, due_date=None, due_at=None):
+            assert due_date is None
+            assert due_at == datetime.fromisoformat("2026-08-27T09:00:00+01:00")
+            return TodoistTask(id="task-1", content=content, due_date="2026-08-27")
+
+        async def list_tasks(self, period, *, limit):
+            assert period == "today"
+            assert limit == 5
+            return [TodoistTask(id="task-1", content="Submit expenses")]
+
+        async def complete_task(self, task_id):
+            self.completed_id = task_id
+
+    provider = FakeTodoistProvider()
+    timer = TimerService(complete)
+    tools = ToolRegistry(timer, todoist=TodoistService(provider))
+
+    assert {definition.name for definition in tools.definitions} == {
+        "set_timer",
+        "cancel_timer",
+        "create_todoist_task",
+        "list_todoist_tasks",
+        "complete_todoist_task",
+    }
+    created = await tools.execute(
+        "create_todoist_task",
+        {
+            "content": "Submit expenses",
+            "due_date": None,
+            "due_at": "2026-08-27T09:00:00+01:00",
+        },
+    )
+    listed = await tools.execute("list_todoist_tasks", {"period": "today"})
+    completed = await tools.execute(
+        "complete_todoist_task", {"task_id": "task-1"}
+    )
+
+    assert json.loads(created.output)["task"]["id"] == "task-1"
+    assert json.loads(listed.output)["count"] == 1
+    assert json.loads(completed.output) == {"ok": True, "taskId": "task-1"}
+    assert provider.completed_id == "task-1"
+    await timer.close()
+
+
+@pytest.mark.asyncio
+async def test_todoist_create_task_validates_due_fields() -> None:
+    async def complete() -> None:
+        pass
+
+    class UnusedProvider:
+        async def create_task(self, *_args, **_kwargs):
+            raise AssertionError("invalid arguments should not reach provider")
+
+        async def list_tasks(self, *_args, **_kwargs):
+            raise AssertionError("not used")
+
+        async def complete_task(self, *_args, **_kwargs):
+            raise AssertionError("not used")
+
+    timer = TimerService(complete)
+    tools = ToolRegistry(timer, todoist=TodoistService(UnusedProvider()))
+
+    result = await tools.execute(
+        "create_todoist_task",
+        {
+            "content": "Conflicting due fields",
+            "due_date": "2026-08-27",
+            "due_at": "2026-08-27T09:00:00+01:00",
+        },
+    )
+
+    assert json.loads(result.output)["ok"] is False
     await timer.close()

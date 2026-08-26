@@ -133,6 +133,18 @@ general `DISPLAY_TEXT`, `SPEAK`, and reminder content is also still pending.
 Free-form place lookup, automatic location detection, severe-weather alerts,
 scheduled reports, and persistent weather data are deferred.
 
+### Incremental feature — Todoist tasks
+
+- optional single-user authentication through a personal API token
+- provider-neutral service with a Todoist API v1 adapter
+- deterministic tools to create Inbox tasks, list up to five tasks for today,
+  overdue, or the upcoming seven days, and complete a task by exact ID
+- existing conversational display and speech output; no new device messages
+- Todoist tasks remain separate from Buddy's durable reminders
+
+OAuth, projects, sections, labels, assignments, editing, deletion, background
+synchronization, and Todoist-driven Buddy alerts are deferred.
+
 ## Milestone 6 — Voice
 
 ### Goal

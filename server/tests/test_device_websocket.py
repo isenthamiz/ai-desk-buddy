@@ -14,6 +14,7 @@ from aideskbuddy.ai import (
     ToolExecutor,
 )
 from aideskbuddy.main import create_app
+from aideskbuddy.todoist import TodoistService, TodoistTask
 from aideskbuddy.weather import WeatherReport, WeatherService
 
 
@@ -54,13 +55,13 @@ class TimerAIProvider:
         execute_tool: ToolExecutor | None = None,
     ) -> str:
         del messages
-        assert {tool.name for tool in tools} == {
+        assert {
             "set_timer",
             "cancel_timer",
             "create_reminder",
             "create_relative_reminder",
             "cancel_reminder",
-        }
+        } <= {tool.name for tool in tools}
         assert execute_tool is not None
         await execute_tool("set_timer", {"duration_seconds": 1})
         return "Timer set for one second."
@@ -97,6 +98,41 @@ class FakeWeatherProvider:
             precipitation_sum_mm=0.1,
             maximum_wind_speed_kmh=18.0,
         )
+
+
+class TodoistAIProvider:
+    async def reply(
+        self,
+        messages: Sequence[ConversationMessage],
+        *,
+        tools: Sequence[ToolDefinition] = (),
+        execute_tool: ToolExecutor | None = None,
+    ) -> str:
+        del messages
+        names = {tool.name for tool in tools}
+        assert {
+            "create_todoist_task",
+            "list_todoist_tasks",
+            "complete_todoist_task",
+        } <= names
+        assert execute_tool is not None
+        result = await execute_tool("list_todoist_tasks", {"period": "today"})
+        assert '"id": "task-1"' in result
+        return "You have one task today: submit expenses."
+
+
+class FakeTodoistProvider:
+    async def create_task(self, content, *, due_date=None, due_at=None):
+        del due_date, due_at
+        return TodoistTask(id="task-1", content=content)
+
+    async def list_tasks(self, period, *, limit):
+        assert period == "today"
+        assert limit == 5
+        return [TodoistTask(id="task-1", content="Submit expenses")]
+
+    async def complete_task(self, _task_id):
+        pass
 
 
 def test_device_connects_and_exchanges_events_and_reactions() -> None:
@@ -284,6 +320,33 @@ def test_ai_weather_tool_uses_existing_conversation_messages() -> None:
             assert websocket.receive_json() == {
                 "type": "DISPLAY_TEXT",
                 "text": "Dublin is partly cloudy and 15 degrees.",
+            }
+            assert websocket.receive_json()["type"] == "SPEAK"
+            assert websocket.receive_json()["state"] == "IDLE"
+
+
+def test_ai_todoist_tool_uses_existing_conversation_messages() -> None:
+    app = create_app(
+        ai_provider=TodoistAIProvider(),
+        todoist_service=TodoistService(FakeTodoistProvider()),
+    )
+    with TestClient(app) as client:
+        with client.websocket_connect("/ws/device") as websocket:
+            websocket.send_json(
+                {
+                    "type": "DEVICE_CONNECTED",
+                    "deviceId": "simulator-001",
+                    "deviceType": "SIMULATOR",
+                }
+            )
+            websocket.receive_json()
+            websocket.send_json({"type": "USER_TEXT", "text": "What's due today?"})
+
+            assert websocket.receive_json()["state"] == "THINKING"
+            assert websocket.receive_json()["state"] == "SPEAKING"
+            assert websocket.receive_json() == {
+                "type": "DISPLAY_TEXT",
+                "text": "You have one task today: submit expenses.",
             }
             assert websocket.receive_json()["type"] == "SPEAK"
             assert websocket.receive_json()["state"] == "IDLE"
