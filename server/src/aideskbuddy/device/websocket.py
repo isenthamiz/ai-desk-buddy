@@ -9,6 +9,7 @@ from aideskbuddy.ai import AIProvider
 from aideskbuddy.conversation import ConversationService
 from aideskbuddy.device.service import (
     handle_device_message,
+    handle_private_notes_text,
     handle_user_text,
     initial_messages,
 )
@@ -28,6 +29,7 @@ from aideskbuddy.protocol import (
     UserText,
     parse_device_message,
 )
+from aideskbuddy.notes import NotesClient
 from aideskbuddy.timer import TimerService
 from aideskbuddy.todoist import TodoistService
 from aideskbuddy.tools import ToolRegistry
@@ -44,6 +46,7 @@ async def handle_device_websocket(
     reminders: ReminderService,
     weather: WeatherService | None = None,
     todoist: TodoistService | None = None,
+    notes: NotesClient | None = None,
 ) -> None:
     """Handle one authenticated-by-handshake device connection."""
     await websocket.accept()
@@ -83,7 +86,23 @@ async def handle_device_websocket(
             await send(
                 [StateChanged(state=BuddyState.THINKING, request_id=message.request_id)]
             )
-            response_messages = await handle_user_text(message, conversation)
+            is_notes_request = message.text.lower().startswith("notes:")
+            if is_notes_request and notes is not None:
+                response_messages = await handle_private_notes_text(message, notes)
+            elif is_notes_request:
+                unavailable = "Private notes search is not configured."
+                response_messages = [
+                    StateChanged(
+                        state=BuddyState.ERROR, request_id=message.request_id
+                    ),
+                    DisplayText(text=unavailable, request_id=message.request_id),
+                    Speak(text=unavailable, request_id=message.request_id),
+                    StateChanged(
+                        state=BuddyState.IDLE, request_id=message.request_id
+                    ),
+                ]
+            else:
+                response_messages = await handle_user_text(message, conversation)
             if timer.is_active:
                 response_messages[-1] = StateChanged(
                     state=BuddyState.TIMER,

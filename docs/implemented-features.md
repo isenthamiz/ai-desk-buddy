@@ -40,7 +40,8 @@ useful.
 ## Reminders
 
 - Create relative or absolute one-shot reminders and cancel them through AI tools.
-- SQLite persistence with timezone-aware due times normalized to UTC.
+- Supabase persistence with timezone-aware due times normalized to UTC. Without
+  Supabase configuration reminders fall back to memory and do not survive restart.
 - Restore pending reminders after a backend restart.
 - Defer notifications while the owning device is offline and deliver them after it
   reconnects.
@@ -66,6 +67,31 @@ useful.
 - Provider-neutral service and Todoist API v1 adapter.
 - OAuth, project/label management, editing, deletion, background synchronization,
   and Todoist-driven device alerts are not implemented.
+
+## Private Obsidian retrieval
+
+- Optional `notes:` request path that bypasses OpenAI tools, conversation requests,
+  and cloud conversation history.
+- Standalone localhost `note-server` process protected by a shared bearer token.
+  The main backend holds no vault or Supabase configuration and receives
+  only final answers and citations.
+- Deterministic Markdown chunking with live local keyword scanning. OpenAI creates
+  embeddings and generates answers from the selected passages.
+- Periodic hash reconciliation on startup and at a configurable interval; only new
+  or changed chunks are re-embedded and deleted chunks are removed remotely.
+- No local notes database. A separate Supabase metadata table stores paths, headings,
+  chunk positions, hashes, and opaque IDs; plaintext note content remains in Obsidian.
+- Supabase pgvector storage contains the owner identifier, opaque chunk IDs, content
+  hashes, and embeddings. Query embeddings are sent to Supabase for similarity
+  search and remain sensitive derived data.
+- Results include Obsidian-style source citations. Vault exclusions and resolved-
+  path checks prevent configured private folders and outside symlinks from indexing.
+- Requires running both backend processes, manual Supabase migration/configuration,
+  an OpenAI API key, and a model supporting 768-dimensional embedding output.
+  OpenAI receives plaintext chunks during indexing, plus the question and selected
+  passages during answer generation.
+  Capture, filesystem-event watching, attachments, local-only vector storage, and
+  automatic reconfiguration are not implemented.
 
 ## Desktop simulator
 

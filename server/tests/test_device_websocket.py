@@ -13,9 +13,15 @@ from aideskbuddy.ai import (
     ToolDefinition,
     ToolExecutor,
 )
-from aideskbuddy.main import create_app
+from aideskbuddy.main import create_app as create_backend_app
+from aideskbuddy.reminder import InMemoryReminderRepository, Reminder, ReminderStatus
 from aideskbuddy.todoist import TodoistService, TodoistTask
 from aideskbuddy.weather import WeatherReport, WeatherService
+
+
+def create_app(**kwargs):
+    kwargs.setdefault("reminder_repository", InMemoryReminderRepository())
+    return create_backend_app(**kwargs)
 
 
 class FakeAIProvider:
@@ -133,6 +139,21 @@ class FakeTodoistProvider:
 
     async def complete_task(self, _task_id):
         pass
+
+
+class FakePrivateNotesService:
+    def __init__(self) -> None:
+        self.questions: list[str] = []
+
+    def start(self) -> None:
+        pass
+
+    async def close(self) -> None:
+        pass
+
+    async def answer(self, question: str) -> str:
+        self.questions.append(question)
+        return "Use the SSD1306. [[Desk Buddy#Display]]"
 
 
 def test_device_connects_and_exchanges_events_and_reactions() -> None:
@@ -352,6 +373,34 @@ def test_ai_todoist_tool_uses_existing_conversation_messages() -> None:
             assert websocket.receive_json()["state"] == "IDLE"
 
 
+def test_private_notes_request_bypasses_cloud_ai_provider() -> None:
+    notes = FakePrivateNotesService()
+    provider = FakeAIProvider()
+    app = create_app(ai_provider=provider, notes_client=notes)  # type: ignore[arg-type]
+    with TestClient(app) as client:
+        with client.websocket_connect("/ws/device") as websocket:
+            websocket.send_json(
+                {
+                    "type": "DEVICE_CONNECTED",
+                    "deviceId": "simulator-001",
+                    "deviceType": "SIMULATOR",
+                }
+            )
+            websocket.receive_json()
+            websocket.send_json(
+                {"type": "USER_TEXT", "text": "notes: display decision"}
+            )
+
+            assert websocket.receive_json()["state"] == "THINKING"
+            assert websocket.receive_json()["state"] == "SPEAKING"
+            assert websocket.receive_json()["text"].startswith("Use the SSD1306")
+            assert websocket.receive_json()["type"] == "SPEAK"
+            assert websocket.receive_json()["state"] == "IDLE"
+
+    assert notes.questions == ["display decision"]
+    assert provider.calls == []
+
+
 def test_esp32_button_starts_and_cancels_timer() -> None:
     app = create_app(ai_provider=FakeAIProvider())
     with TestClient(app) as client:
@@ -386,15 +435,18 @@ def test_esp32_button_starts_and_cancels_timer() -> None:
 
 
 def test_overdue_reminder_is_delivered_when_device_reconnects(tmp_path) -> None:
+    reminder = Reminder(
+        id="00000000-0000-0000-0000-000000000001",
+        device_id="simulator-001",
+        text="Join the design review",
+        due_at=datetime.now(UTC) - timedelta(seconds=1),
+        status=ReminderStatus.PENDING,
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
+    )
     app = create_app(
         ai_provider=FakeAIProvider(),
-        database_path=tmp_path / "buddy.db",
+        reminder_repository=InMemoryReminderRepository([reminder]),
         reminder_poll_interval=60,
-    )
-    reminder = app.state.reminders.create(
-        "simulator-001",
-        "Join the design review",
-        datetime.now(UTC) - timedelta(seconds=1),
     )
 
     with TestClient(app) as client:

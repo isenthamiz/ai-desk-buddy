@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from aideskbuddy.ai import ConversationMessage, ToolDefinition, ToolExecutor
 from aideskbuddy.main import create_app
+from aideskbuddy.reminder import InMemoryReminderRepository
 
 
 class ControlAIProvider:
@@ -36,7 +37,7 @@ def connect_simulator(client: TestClient):
 
 
 def test_offline_control_status_is_available_without_embedded_page(tmp_path) -> None:
-    app = create_app(database_path=tmp_path / "buddy.db")
+    app = create_app(reminder_repository=InMemoryReminderRepository())
     with TestClient(app) as client:
         page = client.get("/control")
         status = client.get("/api/control/status")
@@ -52,7 +53,7 @@ def test_offline_control_status_is_available_without_embedded_page(tmp_path) -> 
 
 def test_control_api_allows_configured_web_origin(tmp_path) -> None:
     app = create_app(
-        database_path=tmp_path / "buddy.db",
+        reminder_repository=InMemoryReminderRepository(),
         control_allowed_origins=["http://localhost:8081"],
     )
     with TestClient(app) as client:
@@ -69,7 +70,7 @@ def test_control_api_allows_configured_web_origin(tmp_path) -> None:
 
 
 def test_control_timer_updates_connected_simulator(tmp_path) -> None:
-    app = create_app(database_path=tmp_path / "buddy.db")
+    app = create_app(reminder_repository=InMemoryReminderRepository())
     with TestClient(app) as client:
         context, websocket = connect_simulator(client)
         try:
@@ -97,7 +98,7 @@ def test_control_timer_updates_connected_simulator(tmp_path) -> None:
 
 def test_control_text_uses_conversation_and_device_flow(tmp_path) -> None:
     app = create_app(
-        ai_provider=ControlAIProvider(), database_path=tmp_path / "buddy.db"
+        ai_provider=ControlAIProvider(), reminder_repository=InMemoryReminderRepository()
     )
     with TestClient(app) as client:
         context, websocket = connect_simulator(client)
@@ -120,7 +121,7 @@ def test_control_text_uses_conversation_and_device_flow(tmp_path) -> None:
 
 
 def test_control_reminders_can_be_created_listed_and_cancelled(tmp_path) -> None:
-    app = create_app(database_path=tmp_path / "buddy.db")
+    app = create_app(reminder_repository=InMemoryReminderRepository())
     due_at = datetime.now(UTC) + timedelta(hours=1)
     with TestClient(app) as client:
         created = client.post(
@@ -139,7 +140,7 @@ def test_control_reminders_can_be_created_listed_and_cancelled(tmp_path) -> None
 
 
 def test_control_actions_require_connected_buddy(tmp_path) -> None:
-    app = create_app(database_path=tmp_path / "buddy.db")
+    app = create_app(reminder_repository=InMemoryReminderRepository())
     with TestClient(app) as client:
         timer = client.post("/api/control/timers", json={"durationSeconds": 60})
         text = client.post("/api/control/messages", json={"text": "Hello"})

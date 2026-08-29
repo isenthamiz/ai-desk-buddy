@@ -12,8 +12,15 @@ from aideskbuddy.ai import AIProvider, OpenAIProvider, UnavailableAIProvider
 from aideskbuddy.control import create_control_router
 from aideskbuddy.device.sessions import SessionRegistry
 from aideskbuddy.device.websocket import handle_device_websocket
+from aideskbuddy.notes import NotesClient
 from aideskbuddy.protocol import BuddyState, DisplayText, ReminderDue, Speak, StateChanged
-from aideskbuddy.reminder import Reminder, ReminderService, SQLiteReminderRepository
+from aideskbuddy.reminder import (
+    InMemoryReminderRepository,
+    Reminder,
+    ReminderRepository,
+    ReminderService,
+    SupabaseReminderRepository,
+)
 from aideskbuddy.todoist import TodoistRestProvider, TodoistService
 from aideskbuddy.weather import OpenMeteoWeatherProvider, WeatherService
 
@@ -70,6 +77,34 @@ def _todoist_service_from_environment() -> TodoistService | None:
     return TodoistService(TodoistRestProvider(token=token))
 
 
+def _notes_client_from_environment() -> NotesClient | None:
+    url = os.getenv("BUDDY_NOTES_SERVICE_URL")
+    token = os.getenv("BUDDY_NOTES_SERVICE_TOKEN")
+    if not url and not token:
+        return None
+    if not url or not token:
+        raise ValueError(
+            "private notes requires BUDDY_NOTES_SERVICE_URL and "
+            "BUDDY_NOTES_SERVICE_TOKEN"
+        )
+    return NotesClient(base_url=url, token=token)
+
+
+def _reminder_repository_from_environment() -> ReminderRepository:
+    url = os.getenv("BUDDY_SUPABASE_URL")
+    key = os.getenv("BUDDY_SUPABASE_SECRET_KEY") or os.getenv(
+        "BUDDY_SUPABASE_SERVICE_ROLE_KEY"
+    )
+    if not url and not key:
+        return InMemoryReminderRepository()
+    if not url or not key:
+        raise ValueError(
+            "Supabase reminders require BUDDY_SUPABASE_URL and "
+            "BUDDY_SUPABASE_SECRET_KEY"
+        )
+    return SupabaseReminderRepository(base_url=url, secret_key=key)
+
+
 def _control_origins_from_environment() -> list[str]:
     configured = os.getenv("BUDDY_CONTROL_ALLOWED_ORIGINS")
     if configured:
@@ -80,10 +115,11 @@ def _control_origins_from_environment() -> list[str]:
 def create_app(
     *,
     ai_provider: AIProvider | None = None,
-    database_path: str | Path | None = None,
+    reminder_repository: ReminderRepository | None = None,
     reminder_poll_interval: float = 1.0,
     weather_service: WeatherService | None = None,
     todoist_service: TodoistService | None = None,
+    notes_client: NotesClient | None = None,
     control_device_id: str | None = None,
     control_allowed_origins: list[str] | None = None,
 ) -> FastAPI:
@@ -109,12 +145,7 @@ def create_app(
         )
         return True
 
-    resolved_database_path = database_path or os.getenv(
-        "BUDDY_DATABASE_PATH", str(SERVER_ROOT / "data" / "buddy.db")
-    )
-    if str(resolved_database_path) != ":memory:":
-        Path(resolved_database_path).parent.mkdir(parents=True, exist_ok=True)
-    repository = SQLiteReminderRepository(resolved_database_path)
+    repository = reminder_repository or _reminder_repository_from_environment()
     reminders = ReminderService(
         repository, notify, poll_interval=reminder_poll_interval
     )
@@ -125,6 +156,8 @@ def create_app(
         try:
             yield
         finally:
+            if application.state.notes is not None:
+                await application.state.notes.close()
             await reminders.close()
 
     application = FastAPI(title="AI Desk Buddy", lifespan=lifespan)
@@ -134,6 +167,7 @@ def create_app(
     application.state.reminder_repository = repository
     application.state.weather = weather_service or _weather_service_from_environment()
     application.state.todoist = todoist_service or _todoist_service_from_environment()
+    application.state.notes = notes_client or _notes_client_from_environment()
     application.state.control_device_id = control_device_id or os.getenv(
         "BUDDY_CONTROL_DEVICE_ID", "simulator-001"
     )
@@ -170,6 +204,7 @@ def create_app(
             application.state.reminders,
             application.state.weather,
             application.state.todoist,
+            application.state.notes,
         )
 
     return application

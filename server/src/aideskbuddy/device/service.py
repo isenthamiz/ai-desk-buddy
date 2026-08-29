@@ -2,6 +2,7 @@
 
 from aideskbuddy.ai import AIProviderError
 from aideskbuddy.conversation import ConversationService
+from aideskbuddy.notes import NotesClient, NotesError
 
 from aideskbuddy.protocol import (
     BuddyState,
@@ -49,6 +50,32 @@ async def handle_user_text(
             StateChanged(state=return_state, request_id=message.request_id),
         ]
 
+    return [
+        StateChanged(state=BuddyState.SPEAKING, request_id=message.request_id),
+        DisplayText(text=response, request_id=message.request_id),
+        Speak(text=response, request_id=message.request_id),
+        StateChanged(state=return_state, request_id=message.request_id),
+    ]
+
+
+async def handle_private_notes_text(
+    message: UserText,
+    notes: NotesClient,
+    *,
+    return_state: BuddyState = BuddyState.IDLE,
+) -> list[ServerMessage]:
+    """Answer an explicit notes request locally without entering AI history."""
+    question = message.text.partition(":")[2].strip()
+    try:
+        response = await notes.answer(question)
+    except NotesError:
+        apology = "Sorry, I couldn't search your private notes just now."
+        return [
+            StateChanged(state=BuddyState.ERROR, request_id=message.request_id),
+            DisplayText(text=apology, request_id=message.request_id),
+            Speak(text=apology, request_id=message.request_id),
+            StateChanged(state=return_state, request_id=message.request_id),
+        ]
     return [
         StateChanged(state=BuddyState.SPEAKING, request_id=message.request_id),
         DisplayText(text=response, request_id=message.request_id),

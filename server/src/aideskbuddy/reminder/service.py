@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from aideskbuddy.reminder.model import Reminder, ReminderStatus
-from aideskbuddy.reminder.repository import SQLiteReminderRepository
+from aideskbuddy.reminder.repository import ReminderRepository
 
 Clock = Callable[[], datetime]
 ReminderNotifier = Callable[[Reminder], Awaitable[bool]]
@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 class ReminderService:
     def __init__(
         self,
-        repository: SQLiteReminderRepository,
+        repository: ReminderRepository,
         notifier: ReminderNotifier,
         *,
         clock: Clock | None = None,
@@ -45,7 +45,7 @@ class ReminderService:
             pass
         self._task = None
 
-    def create(self, device_id: str, text: str, due_at: datetime) -> Reminder:
+    async def create(self, device_id: str, text: str, due_at: datetime) -> Reminder:
         if due_at.tzinfo is None or due_at.utcoffset() is None:
             raise ValueError("due_at must include a UTC offset")
         now = self._clock().astimezone(UTC)
@@ -59,37 +59,40 @@ class ReminderService:
         )
         if not reminder.text:
             raise ValueError("reminder text must not be empty")
-        self._repository.add(reminder)
+        await self._repository.add(reminder)
         self._wake.set()
         return reminder
 
-    def create_in(self, device_id: str, text: str, delay_seconds: int) -> Reminder:
+    async def create_in(self, device_id: str, text: str, delay_seconds: int) -> Reminder:
         """Create a reminder relative to the authoritative backend clock."""
         if delay_seconds <= 0:
             raise ValueError("delay_seconds must be greater than zero")
         due_at = self._clock().astimezone(UTC) + timedelta(seconds=delay_seconds)
-        return self.create(device_id, text, due_at)
+        return await self.create(device_id, text, due_at)
 
-    def cancel(self, device_id: str, reminder_id: str) -> bool:
-        return self._repository.cancel(reminder_id, device_id)
+    async def cancel(self, device_id: str, reminder_id: str) -> bool:
+        return await self._repository.cancel(reminder_id, device_id)
 
     async def deliver_due(self, device_id: str | None = None) -> None:
         async with self._delivery_lock:
             now = self._clock().astimezone(UTC)
-            for reminder in self._repository.due(now, device_id=device_id):
+            for reminder in await self._repository.due(now, device_id=device_id):
                 try:
                     sent = await self._notifier(reminder)
                 except Exception:
                     LOGGER.exception("Could not deliver reminder %s", reminder.id)
                     sent = False
                 if sent:
-                    self._repository.mark_delivered(
+                    await self._repository.mark_delivered(
                         reminder.id, self._clock().astimezone(UTC)
                     )
 
     async def _run(self) -> None:
         while True:
-            await self.deliver_due()
+            try:
+                await self.deliver_due()
+            except RuntimeError:
+                LOGGER.exception("Reminder polling failed")
             self._wake.clear()
             try:
                 await asyncio.wait_for(self._wake.wait(), timeout=self._poll_interval)

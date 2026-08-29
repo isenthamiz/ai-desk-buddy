@@ -8,5 +8,6 @@ __pycache__/
 .env.*
 !.env.example
 server/data/
+note-server/data/
 firmware/.pio/
 firmware/include/config.h

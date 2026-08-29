@@ -230,7 +230,7 @@ class ToolRegistry:
                 )
             if name == "create_reminder" and self._reminders is not None:
                 parsed = CreateReminderArguments.model_validate(arguments)
-                reminder = self._reminders.create(
+                reminder = await self._reminders.create(
                     self._required_device_id(), parsed.text, parsed.due_at
                 )
                 return ToolResult(
@@ -251,7 +251,7 @@ class ToolRegistry:
                 )
             if name == "create_relative_reminder" and self._reminders is not None:
                 parsed = CreateRelativeReminderArguments.model_validate(arguments)
-                reminder = self._reminders.create_in(
+                reminder = await self._reminders.create_in(
                     self._required_device_id(), parsed.text, parsed.delay_seconds
                 )
                 return ToolResult(
@@ -272,7 +272,7 @@ class ToolRegistry:
                 )
             if name == "cancel_reminder" and self._reminders is not None:
                 parsed = CancelReminderArguments.model_validate(arguments)
-                if not self._reminders.cancel(
+                if not await self._reminders.cancel(
                     self._required_device_id(), parsed.reminder_id
                 ):
                     return self._result(ok=False, error="pending reminder not found")

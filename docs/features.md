@@ -41,7 +41,8 @@ For the inventory of capabilities that already exist, see
 
 8. **Quick Notes / Ideas**
    - capture short notes/ideas through the buddy
-   - storage/integration target to be decided later
+   - optional private retrieval and summarization from an existing Obsidian vault
+   - note capture remains to be designed
 
 9. **Reminders**
    - create and surface reminders

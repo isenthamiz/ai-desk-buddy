@@ -168,6 +168,15 @@ Examples:
 
 The AI layer chooses an action; deterministic application code executes it.
 
+Private Obsidian retrieval is a separate path rather than an AI tool. Explicit
+`notes:` input bypasses the OpenAI conversation service and its history. The main
+backend sends only the question over an authenticated loopback connection to the
+separately run note server. That process performs live keyword scanning, obtains
+vector candidates from Supabase by opaque chunk ID and reads only selected vault
+passages. OpenAI creates embeddings and generates the grounded answer from those
+selected passages. Only the final answer and citations cross back into the main
+backend.
+
 ## Async model
 Network-heavy work should use async APIs where possible:
 - WebSocket handling
@@ -180,7 +189,10 @@ CPU-heavy work should not block the main event loop. If needed later, isolate it
 ## Persistence
 Do not require persistence for the first connectivity milestone.
 
-When timers/reminders/configuration need durable storage, start with the simplest appropriate local persistence. SQLite is a possible initial choice; PostgreSQL can be considered later if the project needs a server-grade relational database.
+Durable reminders use a Supabase PostgreSQL table through an async repository.
+Without Supabase configuration the development backend uses non-durable in-memory
+reminders. Note reconciliation state lives alongside embeddings in Supabase; the
+Obsidian vault remains the plaintext source of truth.
 
 ## Deployment
 During development, the FastAPI backend can run on the developer machine with Uvicorn.

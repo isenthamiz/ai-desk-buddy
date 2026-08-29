@@ -89,6 +89,8 @@ is offline, and mark them delivered only after their notification is sent.
 **Reason:** A single local backend does not require an ORM, database server, or
 message broker. A repository boundary keeps future storage changes possible.
 
+**Status:** Superseded by ADR-019.
+
 ## ADR-014 — Initial physical development board
 
 **Decision:** Target the available PlatformIO `esp32dev` board for Milestone 5,
@@ -153,3 +155,45 @@ for browser and native mobile use. The simulator can exercise it before physical
 hardware or signed mobile distribution is available. Separating the client API from
 the device protocol preserves the backend's authority over business logic and
 device behavior.
+
+## ADR-018 — Isolated Obsidian RAG with Supabase and OpenAI
+
+**Decision:** Route explicit `notes:` input before the OpenAI conversation service.
+Use deterministic local Markdown chunking, live local keyword scanning, OpenAI
+embeddings and answer generation, and Supabase pgvector for semantic ranking.
+
+Run this capability as a separate localhost-only `note-server` process authenticated
+with a shared bearer token. The main backend may send a question and receive the
+final answer plus citations, but it has no direct vault access and holds no Supabase
+credentials.
+
+Keep persistent plaintext notes exclusively in the Obsidian vault. Store paths,
+headings, positions, opaque chunk IDs, content hashes, and an owner identifier in a
+Supabase metadata table, with embeddings in a separate table. Read only
+the final selected passages from the vault and send them to OpenAI for grounded
+answer generation. Reconcile the vault on startup and periodically using content
+hashes.
+
+**Reason:** This supplies hybrid retrieval and concise grounded answers while keeping
+answer context to selected passages rather than the entire vault. Paths and headings
+are cloud-visible metadata, but plaintext note content is not stored in Supabase.
+OpenAI receives plaintext chunks for embedding
+and receives each question plus selected passages for answering, so this design does
+not provide local-only note privacy. The process boundary reduces credential and
+plaintext exposure inside the main backend; it is not a security boundary against a compromised host.
+A provider boundary leaves room for a future local vector store.
+
+## ADR-019 — Supabase-only durable application storage
+
+**Decision:** Replace production SQLite persistence with Supabase. Store reminders
+in a dedicated `buddy_reminders` table accessed asynchronously by the main backend.
+For private notes, store paths, headings, chunk positions, IDs, and hashes in a
+dedicated Supabase metadata table and remove the local mapping database.
+
+If the main backend has no Supabase configuration, reminders use an explicitly
+non-durable in-memory repository for development. Provide a one-time importer for
+legacy `buddy.db` reminders.
+
+**Reason:** One hosted persistence system simplifies deployment, inspection, and
+backup. The accepted tradeoff is that note paths and headings become cloud-visible,
+and durable reminders and semantic note retrieval require Supabase availability.

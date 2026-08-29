@@ -85,7 +85,7 @@ Planned work:
 
 ### Implemented scope
 - one-shot reminders created/cancelled through deterministic AI tools
-- SQLite persistence with UTC due times
+- Supabase persistence with UTC due times (migrated from the initial SQLite store)
 - pending reminder restoration after backend restart
 - offline-device deferral and delivery on reconnect
 - alert/display/speak notification flow in the simulator
@@ -157,6 +157,22 @@ synchronization, and Todoist-driven Buddy alerts are deferred.
 Authentication, remote access, multiple-device selection, live client WebSocket
 updates, integration settings, signed mobile builds, and App Store distribution are
 deferred.
+
+### Incremental feature — Private Obsidian retrieval
+
+- explicit `notes:` routing that never enters the OpenAI conversation path
+- separately run authenticated loopback note server; the main backend receives only
+  the final answer and citations
+- deterministic Markdown chunking and local live keyword search
+- OpenAI embeddings and grounded answer generation with source citations
+- Supabase chunk metadata containing paths, headings, positions, opaque IDs, and
+  hashes, plus separate pgvector embeddings; no plaintext note content
+- no local mapping database; Supabase metadata drives reconciliation
+- startup and periodic hash reconciliation for additions, edits, and deletions
+- existing conversational display and speech messages; no new device protocol
+
+Note capture, file-event watching, attachments/PDF extraction, a control-app search
+interface, fully local vector storage, and multi-user OAuth/RLS access are deferred.
 
 ## Milestone 6 — Voice
 

@@ -8,7 +8,7 @@ import pytest
 from aideskbuddy.timer import TimerService
 from aideskbuddy.todoist import TodoistService, TodoistTask
 from aideskbuddy.tools import ToolRegistry
-from aideskbuddy.reminder import ReminderService, SQLiteReminderRepository
+from aideskbuddy.reminder import InMemoryReminderRepository, ReminderService
 from aideskbuddy.weather import WeatherProviderError, WeatherReport, WeatherService
 
 
@@ -66,7 +66,7 @@ async def test_create_and_cancel_reminder_tools(tmp_path) -> None:
 
     timer = TimerService(complete)
     reminders = ReminderService(
-        SQLiteReminderRepository(tmp_path / "buddy.db"), notify
+        InMemoryReminderRepository(), notify
     )
     tools = ToolRegistry(timer, reminders, "simulator-001")
     due_at = datetime.now(UTC) + timedelta(hours=1)
@@ -97,7 +97,7 @@ async def test_relative_reminder_tool_uses_delay_seconds(tmp_path) -> None:
 
     timer = TimerService(complete)
     reminders = ReminderService(
-        SQLiteReminderRepository(tmp_path / "buddy.db"), notify
+        InMemoryReminderRepository(), notify
     )
     tools = ToolRegistry(timer, reminders, "simulator-001")
 

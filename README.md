@@ -15,6 +15,7 @@ ai-desk-buddy/
 ├── README.md
 ├── apps/
 ├── docs/
+├── note-server/
 ├── server/
 ├── firmware/
 └── simulator/
@@ -45,7 +46,7 @@ For Codex and contributors:
 
 The backend and simulator communicate over WebSocket. Text entered in the simulator
 goes through an OpenAI-backed conversation service with deterministic timer and
-reminder tools. One-shot reminders are stored in SQLite, survive backend restarts,
+reminder tools. One-shot reminders are stored in Supabase, survive backend restarts,
 and are delivered when an offline device reconnects. The `esp32dev` firmware now
 connects over the same WebSocket protocol and provides an SSD1306 face plus
 physical timer controls. An optional Open-Meteo integration gives concise current,
@@ -99,8 +100,22 @@ to use a different device ID. See `apps/buddy-control/README.md` for web and iPh
 setup. The initial API has no authentication and should only be exposed on a
 trusted local network.
 
-Reminder data defaults to `server/data/buddy.db`. Set `BUDDY_DATABASE_PATH` to use
-a different SQLite file. Reminder due times are stored in UTC.
+Apply [`server/supabase/reminders.sql`](server/supabase/reminders.sql), then configure
+durable reminders in `server/.env`:
+
+```dotenv
+BUDDY_SUPABASE_URL=https://your-project.supabase.co
+BUDDY_SUPABASE_SECRET_KEY=sb_secret_your-server-side-key
+```
+
+Without these settings reminders are in-memory only. To import a legacy database:
+
+```bash
+cd server
+uv run python scripts/import_sqlite_reminders.py data/buddy.db
+```
+
+Reminder due times are stored in UTC.
 
 To enable weather reports, configure all four location values in `server/.env`:
 
@@ -126,6 +141,43 @@ Restart the backend, then ask Buddy to add a Todoist task, list today's, overdue
 or upcoming tasks, or complete a task it has just created or listed. The token is
 secret and must never be committed. AI Desk Buddy is not created by, affiliated
 with, or supported by Todoist.
+
+## Private Obsidian note search
+
+Buddy can optionally answer explicit `notes:` questions through a separate,
+localhost-only notes process. The vault remains the only persistent plaintext note
+store. Supabase stores chunk paths, headings, positions, hashes, opaque IDs, and
+vector embeddings, but not plaintext note content. Keyword scanning remains local,
+but note chunks are sent to OpenAI for embeddings and selected passages are sent to
+OpenAI with the question for answer generation.
+
+Apply [`note-server/supabase/notes.sql`](note-server/supabase/notes.sql) in the Supabase SQL
+editor. The migration creates a 768-dimensional pgvector table and a server-only
+matching function. Configure an `sb_secret_...` key, never a publishable key.
+
+Copy `note-server/.env.example` to `note-server/.env`, configure the vault and
+provider values there, and set a random shared token. Then start it independently:
+
+```bash
+cd note-server
+uv sync
+uv run uvicorn aideskbuddy_notes.main:app --host 127.0.0.1 --port 8010
+```
+
+Configure only the localhost address and matching token in `server/.env`:
+
+```dotenv
+BUDDY_NOTES_SERVICE_URL=http://127.0.0.1:8010
+BUDDY_NOTES_SERVICE_TOKEN=the-same-random-secret
+```
+
+The embedding model must produce 768 dimensions, matching the migration. Start or
+restart the main backend and ask `notes: what did I decide about the display?`. The vault is
+reconciled on startup and every 60 seconds by default. Supabase still receives
+semantic embeddings of note chunks and questions; this mode reduces cloud exposure
+but is not equivalent to local-only processing. OpenAI receives plaintext chunks
+during indexing and the selected passages for each answer. The main backend has no
+vault or Supabase credentials and receives only the generated answer and citations.
 
 Run the tests from the `server/` directory:
 

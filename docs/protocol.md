@@ -111,6 +111,11 @@ Todoist task creation, listing, and completion are deterministic backend AI tool
 Their results use the same existing conversational message sequence and add no
 Todoist-specific device protocol messages.
 
+Text beginning with `notes:` is reserved for explicitly configured private Obsidian
+retrieval. The backend routes it to an authenticated, loopback-only note server
+before cloud conversation handling. Responses reuse the normal state, display, and
+speech sequence, so no notes-specific device message is added.
+
 ## Server → Device messages
 
 ### STATE_CHANGED
