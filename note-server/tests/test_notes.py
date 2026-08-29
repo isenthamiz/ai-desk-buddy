@@ -236,6 +236,12 @@ async def test_openai_provider_embeds_and_answers_from_selected_passages() -> No
     assert answer == "Use the SSD1306. [[Desk Buddy#Display]]"
     assert calls["embeddings"]["dimensions"] == 768
     assert "Use the SSD1306" in str(calls["responses"]["input"])
+    instructions = str(calls["responses"]["instructions"])
+    assert "synthesizing" in instructions
+    assert "paraphrase" in instructions
+    assert "copying source passages" in instructions
+    assert "two to four short sentences" in instructions
+    assert "[[note#heading]]" in instructions
     assert calls["responses"]["reasoning"] == {"effort": "minimal"}
     assert calls["responses"]["max_output_tokens"] == 1200
     assert calls["responses"]["store"] is False

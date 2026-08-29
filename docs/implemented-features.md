@@ -76,7 +76,8 @@ useful.
   The main backend holds no vault or Supabase configuration and receives
   only final answers and citations.
 - Deterministic Markdown chunking with live local keyword scanning. OpenAI creates
-  embeddings and generates answers from the selected passages.
+  embeddings and synthesizes concise, paraphrased answers from selected passages,
+  combining related facts and retaining per-claim Obsidian citations.
 - Periodic hash reconciliation on startup and at a configurable interval; only new
   or changed chunks are re-embedded and deleted chunks are removed remotely.
 - No local notes database. A separate Supabase metadata table stores paths, headings,
